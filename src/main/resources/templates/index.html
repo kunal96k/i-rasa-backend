@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | I Rasa Perfumes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #e8dfc8;
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 { color: #d4af37; letter-spacing: 2px; }
+        .btn-logout {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #222;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .btn-logout:hover {
+            background: #d4af37;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to I Rasa Dashboard</h1>
+    <p>You are successfully logged in.</p>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn-logout">Logout</button>
+    </form>
+</body>
+</html>

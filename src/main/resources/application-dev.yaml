@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/irasa_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: kunal11
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:kunalpatil192001@gmail.com}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+
+email:
+  from: ${MAIL_FROM:kunalpatil192001@gmail.com}
+  fromName: I Rasa Perfumes
+  templates:
+    enabled: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.perfume.rasa: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.mail: DEBUG
+    org.springframework.security: DEBUG
+
+app:
+  base-url: http://localhost:8080
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:5173
+      - http://localhost:3000
+      - http://127.0.0.1:5500
+      - http://127.0.0.1:3000
+    allow-credentials: true

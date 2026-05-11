@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Outfit:wght@300;400;600&family=Laila:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            font-family: 'Outfit', sans-serif;
+            color: #e8dfc8;
+        }
+        .outer-wrapper {
+            background-color: #050505;
+            padding: 40px 0;
+            width: 100%;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #0d0d0d;
+            border: 1px solid #d4af37;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+        }
+        .header {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            padding: 50px 20px;
+            text-align: center;
+            border-bottom: 1px solid #2a2a2a;
+            position: relative;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            width: 50%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d4af37, transparent);
+        }
+        .logo {
+            font-family: 'Laila', sans-serif;
+            color: #d4af37;
+            font-size: 42px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin: 0;
+            text-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
+        }
+        .tagline {
+            color: #888;
+            font-size: 11px;
+            letter-spacing: 6px;
+            margin-top: 10px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .content {
+            padding: 50px 40px;
+            line-height: 1.8;
+            background: radial-gradient(circle at top right, #141414 0%, #0d0d0d 100%);
+        }
+        h2 {
+            color: #d4af37;
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            margin-top: 0;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        .main-text {
+            color: #b0a58a;
+            font-size: 15px;
+            margin-bottom: 30px;
+        }
+        .btn-wrap {
+            text-align: center;
+            margin: 45px 0;
+        }
+        .button {
+            background: linear-gradient(135deg, #d4af37 0%, #aa8422 100%);
+            color: #000 !important;
+            padding: 18px 50px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: inline-block;
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
+            transition: all 0.3s;
+            border: 1px solid #d4af37;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #2a2a2a, transparent);
+            margin: 40px 0;
+        }
+        .footer {
+            background-color: #050505;
+            padding: 50px 40px;
+            text-align: center;
+            border-top: 1px solid #1a1a1a;
+            font-size: 13px;
+            color: #666;
+        }
+        .footer h4 {
+            color: #d4af37;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-family: 'Cinzel', serif;
+            font-size: 16px;
+        }
+        .footer-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .footer-col {
+            display: table-cell;
+            width: 50%;
+            padding: 0 15px;
+            vertical-align: top;
+            text-align: left;
+        }
+        .footer-col.center {
+            text-align: center;
+            width: 100%;
+            display: block;
+        }
+        .footer-info-title {
+            color: #888;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .footer-info-text {
+            color: #555;
+            line-height: 1.6;
+            margin: 0;
+            font-size: 12px;
+        }
+        .footer-bottom {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #111;
+            font-size: 11px;
+            color: #444;
+            letter-spacing: 1px;
+        }
+        .social-links {
+            margin-top: 20px;
+        }
+        .social-links a {
+            color: #d4af37;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="outer-wrapper">
+        <div class="container">
+            <div class="header">
+                <h1 class="logo">I RASA</h1>
+                <p class="tagline">The Art of Luxury Perfumery</p>
+            </div>
+            <div class="content">
+                <h2>Verify Your Essence</h2>
+                <p class="greeting">Greetings, <strong th:text="${fullName}" style="color: #d4af37;">User</strong>,</p>
+                <p class="main-text">Welcome to the world of <strong>I Rasa</strong>. You are one step away from unlocking a curated collection of artisanal fragrances. To activate your account and embark on this sensory journey, please verify your email address.</p>
+                
+                <div class="btn-wrap">
+                    <a th:href="${verificationLink}" class="button">Activate Account</a>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <p style="font-size: 13px; color: #666; text-align: center;">This exclusive invitation link will remain valid for the next 24 hours.</p>
+                <p style="font-size: 11px; word-break: break-all; color: #333; text-align: center; margin-top: 15px;" th:text="${verificationLink}"></p>
+            </div>
+            
+            <div class="footer">
+                <h4>I Rasa Boutique</h4>
+                
+                <div style="margin-bottom: 30px;">
+                    <span class="footer-info-title">Global Headquarters</span>
+                    <p class="footer-info-text">Panchavati, Padbandh Lane, Saraf Bazar, Nashik-422001, Maharashtra</p>
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <span class="footer-info-title">Concierge Service</span>
+                    <p class="footer-info-text">+91 9823833303 &nbsp;|&nbsp; +91 9371833303</p>
+                </div>
+
+                <div class="social-links">
+                    <a href="#">INSTAGRAM</a>
+                    <a href="#">FACEBOOK</a>
+                    <a href="#">PINTEREST</a>
+                </div>
+                
+                <div class="footer-bottom">
+                    <p>&copy; 2026 I Rasa Perfumes | Crafted by Technokraft Services LLP.</p>
+                    <p style="margin-top: 10px; color: #333;">Nashik Warehouse Boutique</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

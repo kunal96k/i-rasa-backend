@@ -1,0 +1,62 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/rasa_db_prod?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:kunal11}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+
+  jpa:
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+        dialect: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: ${HIBERNATE_DDL_AUTO:update}
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:kunalpatil192001@gmail.com}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+
+email:
+  from: ${MAIL_FROM:no-reply@rasaperfumes.in}
+  fromName: ${MAIL_FROM_NAME:I Rasa Perfumes}
+  templates:
+    enabled: ${EMAIL_TEMPLATES_ENABLED:true}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.perfume.rasa: ${APP_LOG_LEVEL:INFO}
+    org.springframework.web: ${WEB_LOG_LEVEL:WARN}
+    org.springframework.mail: ${MAIL_LOG_LEVEL:INFO}
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  APP CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+app:
+  cors:
+    # Comma-separated list of allowed origins or IP addresses
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,https://www.irasaperfumes.in,https://irasaperfumes.in}
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}
