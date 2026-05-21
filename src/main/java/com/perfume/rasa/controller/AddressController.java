@@ -29,7 +29,7 @@ public class AddressController {
             return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized"));
         }
         User user = userService.getUserByEmail(auth.getName());
-        List<Address> addresses = addressRepository.findByUserId(user.getId());
+        List<Address> addresses = addressRepository.findByUserIdAndTemporaryOrderAddressFalse(user.getId());
         return ResponseEntity.ok(new ApiResponse(true, "Addresses fetched successfully", addresses));
     }
 
@@ -40,7 +40,7 @@ public class AddressController {
         }
         User user = userService.getUserByEmail(auth.getName());
         
-        List<Address> existing = addressRepository.findByUserId(user.getId());
+        List<Address> existing = addressRepository.findByUserIdAndTemporaryOrderAddressFalse(user.getId());
         if (existing.size() >= 5) {
             return ResponseEntity.status(400).body(new ApiResponse(false, "Maximum address limit of 5 reached. Please delete an address before adding a new one."));
         }
@@ -59,6 +59,7 @@ public class AddressController {
         }
         
         address.setUser(user);
+        address.setTemporaryOrderAddress(false);
         // Null-safety: areaLocality is NOT NULL in DB
         if (address.getAreaLocality() == null) address.setAreaLocality("");
         if (address.getLabel() == null) address.setLabel("Home");
@@ -79,7 +80,7 @@ public class AddressController {
         }
         
         if (addressDetails.isDefault() && !address.isDefault()) {
-            List<Address> existing = addressRepository.findByUserId(user.getId());
+            List<Address> existing = addressRepository.findByUserIdAndTemporaryOrderAddressFalse(user.getId());
             for (Address a : existing) {
                 if (a.isDefault()) {
                     a.setDefault(false);
@@ -95,6 +96,7 @@ public class AddressController {
         address.setCity(addressDetails.getCity());
         address.setPincode(addressDetails.getPincode());
         address.setDefault(addressDetails.isDefault());
+        address.setTemporaryOrderAddress(false);
 
         Address updated = addressRepository.save(address);
         return ResponseEntity.ok(new ApiResponse(true, "Address updated", updated));

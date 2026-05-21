@@ -34,16 +34,22 @@ public class Order {
     private BigDecimal shipping = BigDecimal.ZERO;
 
     @Column(precision = 10, scale = 2)
+    private BigDecimal handlingCharge = BigDecimal.ZERO;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal platformFee = BigDecimal.ZERO;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal total = BigDecimal.ZERO;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "billing_address_id")
     private Address billingAddress;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "shipping_address_id")
     private Address shippingAddress;
 
@@ -62,6 +68,8 @@ public class Order {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getOrderId() { return id; }
+    public void setOrderId(Long orderId) { this.id = orderId; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public String getStatus() { return status; }
@@ -78,6 +86,10 @@ public class Order {
     public void setDiscount(BigDecimal discount) { this.discount = discount; }
     public BigDecimal getShipping() { return shipping; }
     public void setShipping(BigDecimal shipping) { this.shipping = shipping; }
+    public BigDecimal getHandlingCharge() { return handlingCharge; }
+    public void setHandlingCharge(BigDecimal handlingCharge) { this.handlingCharge = handlingCharge; }
+    public BigDecimal getPlatformFee() { return platformFee; }
+    public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getTotal() { return total; }

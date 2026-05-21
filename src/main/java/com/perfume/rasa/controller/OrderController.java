@@ -3,28 +3,43 @@ package com.perfume.rasa.controller;
 import com.perfume.rasa.dto.ApiResponse;
 import com.perfume.rasa.dto.OrderRequestDTO;
 import com.perfume.rasa.dto.OrderResponseDTO;
+import com.perfume.rasa.model.Order;
+import com.perfume.rasa.repository.OrderRepository;
+import com.perfume.rasa.service.InvoiceService;
 import com.perfume.rasa.service.OrderService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private InvoiceService invoiceService;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Value("${app.upload.storage-dir:upload}")
     private String uploadDir;
@@ -99,6 +114,22 @@ public class OrderController {
         }
     }
 
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<ApiResponse> updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestParam("status") String status,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+            OrderResponseDTO response = orderService.updateOrderStatus(orderId, status.trim().toUpperCase(), authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Order status updated successfully", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+
     @PostMapping("/payment-proof")
     public ResponseEntity<ApiResponse> uploadPaymentProof(
             @RequestParam("file") MultipartFile file,
@@ -121,6 +152,84 @@ public class OrderController {
             return ResponseEntity.ok(new ApiResponse(true, "Payment proof uploaded", Map.of("url", fileUrl)));
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Upload failed: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Get invoice data for a specific order (for viewing in modal)
+     */
+    @GetMapping("/{orderId}/invoice")
+    public ResponseEntity<ApiResponse> getInvoice(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+
+            Optional<Order> orderOpt = orderRepository.findById(orderId);
+            if (!orderOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Order order = orderOpt.get();
+            
+            // Verify ownership
+            if (!order.getUser().getEmail().equals(authentication.getName())) {
+                return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
+            }
+
+            Map<String, Object> invoiceSummary = invoiceService.getInvoiceSummary(order);
+            log.info("Invoice data retrieved for order: {}", orderId);
+            
+            return ResponseEntity.ok(new ApiResponse(true, "Invoice retrieved successfully", invoiceSummary));
+        } catch (Exception e) {
+            log.error("Error retrieving invoice for order: {}", orderId, e);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to retrieve invoice", null));
+        }
+    }
+
+    /**
+     * Download invoice as PDF
+     */
+    @GetMapping("/{orderId}/invoice/download")
+    public ResponseEntity<?> downloadInvoicePDF(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+
+            Optional<Order> orderOpt = orderRepository.findById(orderId);
+            if (!orderOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Order order = orderOpt.get();
+            
+            // Verify ownership
+            if (!order.getUser().getEmail().equals(authentication.getName())) {
+                return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
+            }
+
+            ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(order);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                "invoice_" + order.getOrderId() + ".pdf");
+            headers.setContentLength(pdfStream.size());
+
+            log.info("Invoice PDF downloaded for order: {}", orderId);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfStream.toByteArray());
+
+        } catch (Exception e) {
+            log.error("Error generating PDF invoice for order: {}", orderId, e);
+            return ResponseEntity.status(500).body(new ApiResponse(false, 
+                "Failed to generate invoice PDF", null));
         }
     }
 }

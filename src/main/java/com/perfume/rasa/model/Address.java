@@ -36,6 +36,9 @@ public class Address {
     @Column(name = "is_default")
     private boolean isDefault = false;
 
+    @Column(name = "is_temporary_order_address", nullable = false)
+    private boolean temporaryOrderAddress = false;
+
     public Address() {}
 
     public Long getId() { return id; }
@@ -56,4 +59,6 @@ public class Address {
     public void setPincode(String pincode) { this.pincode = pincode; }
     public boolean isDefault() { return isDefault; }
     public void setDefault(boolean isDefault) { this.isDefault = isDefault; }
+    public boolean isTemporaryOrderAddress() { return temporaryOrderAddress; }
+    public void setTemporaryOrderAddress(boolean temporaryOrderAddress) { this.temporaryOrderAddress = temporaryOrderAddress; }
 }

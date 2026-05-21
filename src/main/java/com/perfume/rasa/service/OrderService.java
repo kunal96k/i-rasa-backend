@@ -53,6 +53,8 @@ public class OrderService {
         order.setCouponCode(request.getCouponCode());
         order.setDiscount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO);
         order.setShipping(request.getShipping() != null ? request.getShipping() : BigDecimal.ZERO);
+        order.setHandlingCharge(request.getHandlingCharge() != null ? request.getHandlingCharge() : BigDecimal.ZERO);
+        order.setPlatformFee(request.getPlatformFee() != null ? request.getPlatformFee() : BigDecimal.ZERO);
 
         // Map billing and shipping address
         if (request.getBilling() != null) {
@@ -67,19 +69,37 @@ public class OrderService {
             billing.setCity(billingDTO.getCity());
             billing.setPincode(billingDTO.getZip());
             billing.setDefault(false);
+            billing.setTemporaryOrderAddress(true);
             order.setBillingAddress(billing);
 
-            // In checkout, billing is also shipping
-            Address shipping = new Address();
-            shipping.setUser(user);
-            shipping.setLabel("Shipping");
-            shipping.setFullName(billing.getFullName());
-            shipping.setAddressLine1(billing.getAddressLine1());
-            shipping.setAreaLocality(billing.getAreaLocality());
-            shipping.setCity(billing.getCity());
-            shipping.setPincode(billing.getPincode());
-            shipping.setDefault(false);
-            order.setShippingAddress(shipping);
+            BillingRequestDTO shippingDTO = request.getShippingAddress();
+            if (shippingDTO != null) {
+                Address shipping = new Address();
+                shipping.setUser(user);
+                shipping.setLabel("Shipping");
+                String shippingFirst = shippingDTO.getFirstName() != null ? shippingDTO.getFirstName() : "";
+                String shippingLast = shippingDTO.getLastName() != null ? shippingDTO.getLastName() : "";
+                shipping.setFullName((shippingFirst + " " + shippingLast).trim());
+                shipping.setAddressLine1(shippingDTO.getAddress1());
+                shipping.setAreaLocality(shippingDTO.getAddress2() != null ? shippingDTO.getAddress2() : billing.getAreaLocality());
+                shipping.setCity(shippingDTO.getCity());
+                shipping.setPincode(shippingDTO.getZip());
+                shipping.setDefault(false);
+                shipping.setTemporaryOrderAddress(true);
+                order.setShippingAddress(shipping);
+            } else {
+                Address shipping = new Address();
+                shipping.setUser(user);
+                shipping.setLabel("Shipping");
+                shipping.setFullName(billing.getFullName());
+                shipping.setAddressLine1(billing.getAddressLine1());
+                shipping.setAreaLocality(billing.getAreaLocality());
+                shipping.setCity(billing.getCity());
+                shipping.setPincode(billing.getPincode());
+                shipping.setDefault(false);
+                shipping.setTemporaryOrderAddress(true);
+                order.setShippingAddress(shipping);
+            }
         }
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -101,7 +121,10 @@ public class OrderService {
 
         BigDecimal total = request.getTotal();
         if (total == null) {
-            total = subtotal.subtract(order.getDiscount()).add(order.getShipping());
+            total = subtotal.subtract(order.getDiscount())
+                    .add(order.getShipping())
+                    .add(order.getHandlingCharge())
+                    .add(order.getPlatformFee());
         }
         order.setTotal(total);
         order.setStatus("PENDING");
@@ -112,13 +135,13 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Send order received email
+        // Send order received email immediately after placement
         if (user != null && user.getEmail() != null) {
-            String fullName = user.getFullName() != null ? user.getFullName() : 
+            String fullName = user.getFullName() != null ? user.getFullName() :
                     (order.getBillingAddress() != null ? order.getBillingAddress().getFullName() : "Customer");
-            String deliveryAddressStr = order.getBillingAddress() != null ? 
-                    (order.getBillingAddress().getAddressLine1() + ", " + order.getBillingAddress().getAreaLocality()) : "";
-            String city = order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
+            String deliveryAddressStr = buildDeliveryAddress(order);
+            String city = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
+                    : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
 
             emailService.sendOrderReceivedEmail(
                     user.getEmail(),
@@ -177,6 +200,8 @@ public class OrderService {
         dto.setCouponCode(order.getCouponCode());
         dto.setDiscount(order.getDiscount());
         dto.setShipping(order.getShipping());
+        dto.setHandlingCharge(order.getHandlingCharge());
+        dto.setPlatformFee(order.getPlatformFee());
         dto.setSubtotal(order.getSubtotal());
         dto.setTotal(order.getTotal());
         dto.setExpectedDeliveryDate(order.getExpectedDeliveryDate());
@@ -249,6 +274,131 @@ public class OrderService {
         }
 
         return dto;
+    }
+
+    @Transactional
+    public OrderResponseDTO updateOrderStatus(Long orderId, String status, String username) {
+        User user = username != null ? userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username)) : null;
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+
+        if (user != null && !order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
+            throw new RuntimeException("Unauthorized to update order status");
+        }
+
+        order.setStatus(status);
+        if (isFinalStatus(status)) {
+            removeTemporaryOrderAddresses(order);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        sendOrderStatusEmail(savedOrder);
+        return mapToResponseDTO(savedOrder);
+    }
+
+    private void sendOrderStatusEmail(Order order) {
+        if (order.getUser() == null || order.getUser().getEmail() == null) {
+            return;
+        }
+
+        String fullName = order.getUser().getFullName() != null ? order.getUser().getFullName()
+                : order.getBillingAddress() != null ? order.getBillingAddress().getFullName() : "Customer";
+        String deliveryAddress = buildDeliveryAddress(order);
+        String city = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
+                : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
+        java.util.List<OrderItemRequestDTO> itemDTOs = new ArrayList<>();
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                OrderItemRequestDTO itemDTO = new OrderItemRequestDTO();
+                itemDTO.setProductId(item.getProductId());
+                itemDTO.setName(item.getName());
+                itemDTO.setPrice(item.getPrice());
+                itemDTO.setQty(item.getQty());
+                itemDTO.setSize(item.getSize());
+                itemDTOs.add(itemDTO);
+            }
+        }
+
+        switch (order.getStatus() != null ? order.getStatus().toUpperCase() : "") {
+            case "CONFIRMED":
+                emailService.sendOrderConfirmedEmail(
+                        order.getUser().getEmail(),
+                        fullName,
+                        order.getId(),
+                        itemDTOs,
+                        order.getSubtotal(),
+                        order.getDiscount(),
+                        order.getShipping(),
+                        order.getTotal(),
+                        order.getPaymentMethod(),
+                        deliveryAddress,
+                        city,
+                        order.getExpectedDeliveryDate()
+                );
+                break;
+            case "DELIVERED":
+                emailService.sendOrderDeliveredEmail(
+                        order.getUser().getEmail(),
+                        fullName,
+                        order.getId(),
+                        itemDTOs,
+                        order.getSubtotal(),
+                        order.getDiscount(),
+                        order.getShipping(),
+                        order.getTotal(),
+                        order.getPaymentMethod(),
+                        deliveryAddress,
+                        city,
+                        order.getExpectedDeliveryDate()
+                );
+                break;
+            default:
+                break;
+        }
+    }
+
+    private String buildDeliveryAddress(Order order) {
+        Address address = order.getShippingAddress() != null ? order.getShippingAddress() : order.getBillingAddress();
+        if (address == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (address.getAddressLine1() != null) {
+            sb.append(address.getAddressLine1());
+        }
+        if (address.getAreaLocality() != null && !address.getAreaLocality().isEmpty()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(address.getAreaLocality());
+        }
+        if (address.getCity() != null && !address.getCity().isEmpty()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(address.getCity());
+        }
+        if (address.getPincode() != null && !address.getPincode().isEmpty()) {
+            if (sb.length() > 0) sb.append(" - ");
+            sb.append(address.getPincode());
+        }
+        return sb.toString();
+    }
+
+    private boolean isFinalStatus(String status) {
+        return status != null && (
+                status.equalsIgnoreCase("COMPLETED") ||
+                status.equalsIgnoreCase("DELIVERED") ||
+                status.equalsIgnoreCase("CANCELLED") ||
+                status.equalsIgnoreCase("REFUNDED")
+        );
+    }
+
+    private void removeTemporaryOrderAddresses(Order order) {
+        if (order.getBillingAddress() != null && order.getBillingAddress().isTemporaryOrderAddress()) {
+            order.setBillingAddress(null);
+        }
+        if (order.getShippingAddress() != null && order.getShippingAddress().isTemporaryOrderAddress()) {
+            order.setShippingAddress(null);
+        }
     }
 
     @Transactional(readOnly = true)

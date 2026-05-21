@@ -193,4 +193,45 @@ public class EmailService {
             log.error("Failed to send order confirmed email for order #{}: {}", orderId, e.getMessage());
         }
     }
+
+    public void sendOrderDeliveredEmail(String toEmail, String fullName, Long orderId,
+                                        java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
+                                        java.math.BigDecimal subtotal, java.math.BigDecimal discount,
+                                        java.math.BigDecimal shipping, java.math.BigDecimal total,
+                                        String paymentMethod, String deliveryAddress, String city,
+                                        java.time.LocalDate expectedDeliveryDate) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(toEmail);
+            helper.setSubject("Your package was delivered! — I Rasa Perfumes");
+
+            Context ctx = new Context();
+            ctx.setVariable("fullName", fullName);
+            ctx.setVariable("orderId", orderId);
+            ctx.setVariable("subject", "Your package was delivered!");
+            ctx.setVariable("bodyIntro", "Great news! Your package has been delivered successfully. Thank you for shopping with I Rasa Perfumes.");
+            ctx.setVariable("status", "Delivered ✅");
+            ctx.setVariable("paymentMethod", paymentMethod);
+            ctx.setVariable("items", items);
+            ctx.setVariable("subtotal", subtotal);
+            ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
+            ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("total", total);
+            ctx.setVariable("deliveryAddress", deliveryAddress);
+            ctx.setVariable("city", city);
+            ctx.setVariable("expectedDeliveryDate", expectedDeliveryDate != null
+                    ? expectedDeliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")) : null);
+            ctx.setVariable("statusNote",
+                    "Your order has been delivered. If you have any questions, you can reply to this email or visit your account order history.");
+
+            String html = templateEngine.process("email/order-delivered", ctx);
+            helper.setText(html, true);
+            mailSender.send(message);
+            log.info("Order delivered email sent to {} for order #{}", toEmail, orderId);
+        } catch (Exception e) {
+            log.error("Failed to send order delivered email for order #{}: {}", orderId, e.getMessage());
+        }
+    }
 }

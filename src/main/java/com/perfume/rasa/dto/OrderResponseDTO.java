@@ -13,6 +13,8 @@ public class OrderResponseDTO {
     private String couponCode;
     private BigDecimal discount;
     private BigDecimal shipping;
+    private BigDecimal handlingCharge;
+    private BigDecimal platformFee;
     private BigDecimal subtotal;
     private BigDecimal total;
     private LocalDate expectedDeliveryDate;
@@ -35,6 +37,10 @@ public class OrderResponseDTO {
     public void setDiscount(BigDecimal discount) { this.discount = discount; }
     public BigDecimal getShipping() { return shipping; }
     public void setShipping(BigDecimal shipping) { this.shipping = shipping; }
+    public BigDecimal getHandlingCharge() { return handlingCharge; }
+    public void setHandlingCharge(BigDecimal handlingCharge) { this.handlingCharge = handlingCharge; }
+    public BigDecimal getPlatformFee() { return platformFee; }
+    public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getTotal() { return total; }
