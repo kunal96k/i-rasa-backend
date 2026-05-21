@@ -4,7 +4,8 @@ import com.perfume.rasa.dto.RegisterRequest;
 import com.perfume.rasa.model.User;
 import com.perfume.rasa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,14 +19,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserService implements UserDetailsService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
+    }
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -47,6 +53,9 @@ public class UserService implements UserDetailsService {
     public User registerUser(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("An account with this email already exists.");
+        }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new IllegalArgumentException("An account with this phone number already exists.");
         }
 
         User user = new User();
@@ -90,7 +99,7 @@ public class UserService implements UserDetailsService {
         userRepository.save(user);
 
         // Send welcome email
-        String loginLink = baseUrl + "/login";
+        String loginLink = baseUrl + "/login.html";
         emailService.sendWelcomeEmail(user.getEmail(), user.getFullName(), user.getEmail(), loginLink);
 
         log.info("Email verified for user: {}", user.getEmail());
@@ -99,5 +108,13 @@ public class UserService implements UserDetailsService {
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    public void sendOtpEmail(String email, String otp) {
+        emailService.sendOtpEmail(email, otp);
     }
 }

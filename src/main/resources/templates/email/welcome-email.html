@@ -43,11 +43,11 @@
             background: linear-gradient(90deg, transparent, #d4af37, transparent);
         }
         .logo {
-            font-family: 'Laila', sans-serif;
+            font-family: 'Samarkan', 'Laila', sans-serif;
             color: #d4af37;
             font-size: 42px;
             letter-spacing: 5px;
-            text-transform: uppercase;
+            text-transform: lowercase;
             margin: 0;
             text-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
         }
@@ -190,7 +190,9 @@
                 <p class="tagline">Welcome to the Inner Circle</p>
             </div>
             <div class="content">
-                <h2>The Journey Begins 🎉</h2>
+                <h2>The Journey Begins <span style="display:inline-block; vertical-align:middle; margin-left:5px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </span></h2>
                 <p class="greeting">Welcome home, <strong th:text="${fullName}" style="color: #d4af37;">User</strong>,</p>
                 <p class="main-text">Your membership is now official. You are part of an exclusive circle of fragrance lovers dedicated to the art of luxury perfumery. Your account is fully active and ready for your next signature scent.</p>
                 
@@ -202,7 +204,10 @@
                         </tr>
                         <tr>
                             <td class="label">Membership Status</td>
-                            <td class="value" style="color: #25d366;">Fully Verified ✓</td>
+                            <td class="value" style="color: #25d366;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Fully Verified
+                            </td>
                         </tr>
                         <tr>
                             <td class="label">Access Level</td>

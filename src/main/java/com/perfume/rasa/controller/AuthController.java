@@ -4,11 +4,14 @@ import com.perfume.rasa.dto.ApiResponse;
 import com.perfume.rasa.dto.RegisterRequest;
 import com.perfume.rasa.model.User;
 import com.perfume.rasa.service.UserService;
+import com.perfume.rasa.service.OtpService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,23 +22,41 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
+    private final OtpService otpService;
+    private final com.perfume.rasa.service.UserProfileService userProfileService;
     private final AuthenticationManager authenticationManager;
+
+    public AuthController(UserService userService, OtpService otpService, com.perfume.rasa.service.UserProfileService userProfileService, AuthenticationManager authenticationManager) {
+        this.userService = userService;
+        this.otpService = otpService;
+        this.userProfileService = userProfileService;
+        this.authenticationManager = authenticationManager;
+    }
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
 
     /** POST /api/auth/register */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(
-            @Valid @RequestBody RegisterRequest request,
-            HttpServletRequest servletRequest) {
+            @Valid @RequestBody RegisterRequest request) {
+
+        // Check if email was verified via OtpService
+        if (!otpService.isEmailVerified(request.getEmail())) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, 
+                "Please verify your email via OTP before registering."));
+        }
 
         try {
             User user = userService.registerUser(request);
+            // Clear verification after success
+            otpService.clearVerification(request.getEmail());
             return ResponseEntity.ok(new ApiResponse(true,
                     "Registration successful! Please check your email to verify your account."));
         } catch (IllegalArgumentException e) {
@@ -44,6 +65,50 @@ public class AuthController {
             log.error("Registration failed: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(new ApiResponse(false,
                     "Registration failed. Please try again."));
+        }
+    }
+
+    /** POST /api/auth/send-otp */
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse> sendOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        log.info("Request to send OTP for email: {}", email);
+        
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Email is required"));
+        }
+
+        if (userService.existsByEmail(email)) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "An account with this email already exists."));
+        }
+
+        try {
+            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
+            otpService.storeOtp(email, otp);
+            log.info("OTP generated and stored for email: {}", email);
+            
+            userService.sendOtpEmail(email, otp);
+            return ResponseEntity.ok(new ApiResponse(true, "OTP sent to " + email));
+        } catch (Exception e) {
+            log.error("Failed to send OTP to {}: {}", email, e.getMessage());
+            return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to send OTP."));
+        }
+    }
+
+    /** POST /api/auth/verify-otp */
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse> verifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        
+        log.info("Verifying OTP for {}: {}", email, otp);
+
+        if (otpService.verifyOtp(email, otp)) {
+            log.info("OTP verified successfully for: {}", email);
+            return ResponseEntity.ok(new ApiResponse(true, "OTP verified successfully!"));
+        } else {
+            log.warn("OTP verification failed for: {}", email);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid or expired OTP."));
         }
     }
 
@@ -57,11 +122,16 @@ public class AuthController {
             userService.verifyEmail(token);
             // Redirect to login with success param
             return ResponseEntity.status(302)
-                    .header("Location", "/login?verified=true")
+                    .header("Location", baseUrl + "/login.html?verified=true")
                     .build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(302)
-                    .header("Location", "/login?verify-error=" + e.getMessage())
+                    .header("Location", baseUrl + "/login.html?verify-error=" + e.getMessage())
+                    .build();
+        } catch (Exception e) {
+            log.error("Unexpected error during email verification: ", e);
+            return ResponseEntity.status(302)
+                    .header("Location", baseUrl + "/login.html?verify-error=An unexpected error occurred. Please try again.")
                     .build();
         }
     }
@@ -87,11 +157,18 @@ public class AuthController {
                     SecurityContextHolder.getContext());
 
             User user = userService.getUserByEmail(email);
-            Map<String, Object> userData = Map.of(
-                    "fullName", user.getFullName(),
-                    "email", user.getEmail(),
-                    "phone", user.getPhone(),
-                    "role", user.getRole().name());
+            String profileImageUrl = null;
+            try {
+                profileImageUrl = userProfileService.getProfile(email).getProfileImageUrl();
+            } catch(Exception e) {}
+
+            Map<String, Object> userData = new java.util.HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("fullName", user.getFullName());
+            userData.put("email", user.getEmail());
+            userData.put("phone", user.getPhone() != null ? user.getPhone() : "");
+            userData.put("role", user.getRole().name());
+            userData.put("profileImageUrl", profileImageUrl != null ? profileImageUrl : "");
 
             return ResponseEntity.ok(new ApiResponse(true, "Login successful", userData));
 
@@ -116,11 +193,18 @@ public class AuthController {
 
         try {
             User user = userService.getUserByEmail(auth.getName());
-            Map<String, Object> userData = Map.of(
-                    "fullName", user.getFullName(),
-                    "email", user.getEmail(),
-                    "phone", user.getPhone(),
-                    "role", user.getRole().name());
+            String profileImageUrl = null;
+            try {
+                profileImageUrl = userProfileService.getProfile(auth.getName()).getProfileImageUrl();
+            } catch(Exception e) {}
+
+            Map<String, Object> userData = new java.util.HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("fullName", user.getFullName());
+            userData.put("email", user.getEmail());
+            userData.put("phone", user.getPhone() != null ? user.getPhone() : "");
+            userData.put("role", user.getRole().name());
+            userData.put("profileImageUrl", profileImageUrl != null ? profileImageUrl : "");
             return ResponseEntity.ok(new ApiResponse(true, "Authenticated", userData));
         } catch (Exception e) {
             return ResponseEntity.status(401).body(new ApiResponse(false, "Not authenticated"));
