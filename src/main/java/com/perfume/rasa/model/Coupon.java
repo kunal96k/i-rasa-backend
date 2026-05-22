@@ -28,6 +28,10 @@ public class Coupon {
 
     private LocalDateTime expiryDate;
 
+    private String description;
+    private String validity;
+    private String discount;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getCode() { return code; }
@@ -42,4 +46,11 @@ public class Coupon {
     public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getExpiryDate() { return expiryDate; }
     public void setExpiryDate(LocalDateTime expiryDate) { this.expiryDate = expiryDate; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getValidity() { return validity; }
+    public void setValidity(String validity) { this.validity = validity; }
+    public String getDiscount() { return discount; }
+    public void setDiscount(String discount) { this.discount = discount; }
 }

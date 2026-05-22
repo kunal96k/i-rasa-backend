@@ -22,8 +22,51 @@ public class CouponService {
     @Autowired
     private com.perfume.rasa.repository.OrderRepository orderRepository;
 
+    private void seedDefaultCoupons() {
+        Coupon welcomeCoupon = couponRepository.findByCode("WELCOME20").orElse(new Coupon());
+        welcomeCoupon.setCode("WELCOME20");
+        welcomeCoupon.setDiscountPercentage(new java.math.BigDecimal("20.00"));
+        welcomeCoupon.setMinCartValue(new java.math.BigDecimal("0.00"));
+        welcomeCoupon.setActive(true);
+        if (welcomeCoupon.getExpiryDate() == null) {
+            welcomeCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
+        }
+        welcomeCoupon.setDescription("Get 20% discount on your first order");
+        welcomeCoupon.setValidity("Valid for 10 years");
+        welcomeCoupon.setDiscount("20% OFF");
+        couponRepository.save(welcomeCoupon);
+
+        Coupon luxuryCoupon = couponRepository.findByCode("LUXURY10").orElse(new Coupon());
+        luxuryCoupon.setCode("LUXURY10");
+        luxuryCoupon.setDiscountPercentage(new java.math.BigDecimal("10.00"));
+        luxuryCoupon.setMinCartValue(new java.math.BigDecimal("1000.00"));
+        luxuryCoupon.setActive(true);
+        if (luxuryCoupon.getExpiryDate() == null) {
+            luxuryCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
+        }
+        luxuryCoupon.setDescription("10% discount on luxury products above Rs. 1000");
+        luxuryCoupon.setValidity("Valid for 10 years");
+        luxuryCoupon.setDiscount("10% OFF");
+        couponRepository.save(luxuryCoupon);
+
+        Coupon festiveCoupon = couponRepository.findByCode("FESTIVE25").orElse(new Coupon());
+        festiveCoupon.setCode("FESTIVE25");
+        festiveCoupon.setDiscountPercentage(new java.math.BigDecimal("25.00"));
+        festiveCoupon.setMinCartValue(new java.math.BigDecimal("2000.00"));
+        festiveCoupon.setActive(true);
+        if (festiveCoupon.getExpiryDate() == null) {
+            festiveCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
+        }
+        festiveCoupon.setDescription("25% discount on all festive purchases above Rs. 2000");
+        festiveCoupon.setValidity("Valid for 10 years");
+        festiveCoupon.setDiscount("25% OFF");
+        couponRepository.save(festiveCoupon);
+    }
+
     public CouponValidateResponse validateCoupon(CouponValidateRequest request,
             org.springframework.security.core.Authentication authentication) {
+        seedDefaultCoupons();
+
         String code = request.getCode();
         if (code != null && code.trim().equalsIgnoreCase("WELCOME20")) {
             // Check if user has already placed an order
@@ -38,17 +81,6 @@ public class CouponService {
                         throw new RuntimeException("Coupon WELCOME20 is only applicable for your first order.");
                     }
                 }
-            }
-
-            // Seed WELCOME20 if not present
-            if (!couponRepository.findByCode("WELCOME20").isPresent()) {
-                Coupon welcomeCoupon = new Coupon();
-                welcomeCoupon.setCode("WELCOME20");
-                welcomeCoupon.setDiscountPercentage(new BigDecimal("20.00"));
-                welcomeCoupon.setMinCartValue(new BigDecimal("0.00"));
-                welcomeCoupon.setActive(true);
-                welcomeCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
-                couponRepository.save(welcomeCoupon);
             }
         }
 
@@ -80,15 +112,7 @@ public class CouponService {
     }
 
     public java.util.List<Coupon> getActiveCoupons() {
-        if (!couponRepository.findByCode("WELCOME20").isPresent()) {
-            Coupon welcomeCoupon = new Coupon();
-            welcomeCoupon.setCode("WELCOME20");
-            welcomeCoupon.setDiscountPercentage(new java.math.BigDecimal("20.00"));
-            welcomeCoupon.setMinCartValue(new java.math.BigDecimal("0.00"));
-            welcomeCoupon.setActive(true);
-            welcomeCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
-            couponRepository.save(welcomeCoupon);
-        }
+        seedDefaultCoupons();
 
         return couponRepository.findAll().stream()
                 .filter(c -> c.isActive() && (c.getExpiryDate() == null || c.getExpiryDate().isAfter(LocalDateTime.now())))
