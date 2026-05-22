@@ -61,6 +61,9 @@ public class Order {
     @Column
     private LocalDate expectedDeliveryDate;
 
+    @Column(name = "access_token")
+    private String accessToken;
+
     public void addItem(OrderItem item) {
         items.add(item);
         item.setOrder(this);
@@ -104,4 +107,6 @@ public class Order {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDate getExpectedDeliveryDate() { return expectedDeliveryDate; }
     public void setExpectedDeliveryDate(LocalDate expectedDeliveryDate) { this.expectedDeliveryDate = expectedDeliveryDate; }
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 }

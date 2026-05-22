@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class OrderService {
@@ -133,6 +134,12 @@ public class OrderService {
         // Expected delivery date: e.g. 5 days from now
         order.setExpectedDeliveryDate(LocalDate.now().plusDays(5));
 
+        // If guest order (no user) generate an access token so the guest can view the order
+        if (user == null) {
+            String token = UUID.randomUUID().toString();
+            order.setAccessToken(token);
+        }
+
         Order savedOrder = orderRepository.save(order);
 
         // Send order received email immediately after placement
@@ -191,7 +198,7 @@ public class OrderService {
         return mapToResponseDTO(order);
     }
 
-    private OrderResponseDTO mapToResponseDTO(Order order) {
+    public OrderResponseDTO mapToResponseDTO(Order order) {
         OrderResponseDTO dto = new OrderResponseDTO();
         dto.setOrderId(order.getId());
         dto.setCreatedAt(order.getCreatedAt());
@@ -272,6 +279,7 @@ public class OrderService {
             }
             dto.setItems(itemDTOs);
         }
+        dto.setAccessToken(order.getAccessToken());
 
         return dto;
     }

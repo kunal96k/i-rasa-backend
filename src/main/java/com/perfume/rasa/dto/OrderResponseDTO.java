@@ -19,6 +19,7 @@ public class OrderResponseDTO {
     private BigDecimal total;
     private LocalDate expectedDeliveryDate;
     private String userEmail;
+    private String accessToken;
     private BillingRequestDTO billing;
     private BillingRequestDTO shippingAddress;
     private List<OrderItemRequestDTO> items;
@@ -55,4 +56,6 @@ public class OrderResponseDTO {
     public void setExpectedDeliveryDate(LocalDate d) { this.expectedDeliveryDate = d; }
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 }

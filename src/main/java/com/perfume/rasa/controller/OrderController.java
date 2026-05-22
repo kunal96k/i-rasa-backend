@@ -7,6 +7,7 @@ import com.perfume.rasa.model.Order;
 import com.perfume.rasa.repository.OrderRepository;
 import com.perfume.rasa.service.InvoiceService;
 import com.perfume.rasa.service.OrderService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -104,11 +105,44 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse> getOrder(@PathVariable Long orderId, Authentication authentication) {
         try {
-            if (authentication == null) {
+            // Allow access by authenticated users OR by providing a valid access token for guest orders
+            String principal = authentication != null ? authentication.getName() : null;
+            String accessToken = null;
+            // accept token as query param
+            // note: Spring will map query params automatically if present; read from request
+            accessToken = org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()
+                    .getAttribute("javax.servlet.forward.query_string", 0) == null ? null : null;
+
+            // Simple approach: read token param from request
+            HttpServletRequest request = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+            if (request != null) {
+                accessToken = request.getParameter("token");
+            }
+
+            // If authenticated, return order if allowed
+            if (principal != null) {
+                OrderResponseDTO response = orderService.getOrderForUser(orderId, principal);
+                return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", response));
+            }
+
+            // If not authenticated, allow access if token matches the order access token
+            java.util.Optional<com.perfume.rasa.model.Order> orderOpt = orderRepository.findById(orderId);
+            if (!orderOpt.isPresent()) {
+                return ResponseEntity.status(404).body(new ApiResponse(false, "Order not found", null));
+            }
+            com.perfume.rasa.model.Order order = orderOpt.get();
+            if (order.getUser() != null) {
+                // order belongs to a user but request is unauthenticated
                 return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
             }
-            OrderResponseDTO response = orderService.getOrderForUser(orderId, authentication.getName());
-            return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", response));
+
+            if (accessToken != null && accessToken.equals(order.getAccessToken())) {
+                OrderResponseDTO dto = orderService.mapToResponseDTO(order);
+                return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", dto));
+            }
+
+            return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
         }

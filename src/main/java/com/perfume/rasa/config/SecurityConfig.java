@@ -67,7 +67,7 @@ public class SecurityConfig {
                                 "/fonts/**", "/webjars/**", "/*.html",
                                 "/favicon.ico", "/api/files/**")
                         .permitAll()
-                        .requestMatchers("/checkout/**", "/order/**", "/account/**", "/profile/**", "/api/profile/**").authenticated()
+                        .requestMatchers("/checkout/**", "/order/**", "/account/**", "/profile/**", "/api/profile/**", "/api/cart/**").authenticated()
                         .anyRequest().permitAll())
                 .formLogin(form -> form
                         .loginPage("/login")

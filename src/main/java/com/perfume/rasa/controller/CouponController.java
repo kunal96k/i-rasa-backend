@@ -23,7 +23,9 @@ public class CouponController {
             CouponValidateResponse response = couponService.validateCoupon(request, authentication);
             return ResponseEntity.ok(new ApiResponse(true, "Coupon applied successfully", response));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+            // Return HTTP 200 with success=false so front-end receives a JSON body
+            // and avoids browser console errors for 4xx responses during validation flow.
+            return ResponseEntity.ok(new ApiResponse(false, e.getMessage(), null));
         }
     }
 

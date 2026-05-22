@@ -35,20 +35,43 @@ public class InvoiceService {
      * @return ByteArrayOutputStream containing PDF data
      */
     public ByteArrayOutputStream generateInvoicePDF(Order order) {
+        // Generate HTML content
+        String htmlContent = generateInvoiceHTML(order);
+        
+        // Convert HTML to PDF with font embedding and proper converter properties
+        ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
         try {
-            // Generate HTML content
-            String htmlContent = generateInvoiceHTML(order);
-            
-            // Convert HTML to PDF
-            ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
-            HtmlConverter.convertToPdf(htmlContent, pdfOutputStream);
-            
-            log.info("PDF invoice generated successfully for order: {}", order.getOrderId());
-            return pdfOutputStream;
-        } catch (IOException e) {
-            log.error("Error generating PDF invoice for order: {}", order.getOrderId(), e);
-            throw new RuntimeException("Failed to generate invoice PDF", e);
+            com.itextpdf.html2pdf.ConverterProperties props = new com.itextpdf.html2pdf.ConverterProperties();
+            com.itextpdf.layout.font.FontProvider fontProvider = new com.itextpdf.layout.font.FontProvider();
+
+            // Try to load the Samarkan font from the front-end fonts folder (workspace)
+            // Relative path from the `rasa` module to the i-rasa frontend fonts directory
+            String possibleFontPath = "../i-rasa/fonts/SAMARN__.TTF";
+            try {
+                java.nio.file.Path fp = java.nio.file.Paths.get(possibleFontPath).toAbsolutePath();
+                if (java.nio.file.Files.exists(fp)) {
+                    fontProvider.addFont(fp.toString());
+                }
+            } catch (Exception ex) {
+                // ignore and continue; fallback to system fonts
+            }
+
+            // Add default fonts as fallback
+            fontProvider.addStandardPdfFonts();
+            props.setFontProvider(fontProvider);
+
+            // Set a base URI so relative resources (images/css) inside templates resolve
+            props.setBaseUri(".");
+
+            com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream, props);
+        } catch (Exception e) {
+            // Fallback to simple conversion if anything fails
+            log.warn("Advanced PDF conversion failed, falling back to basic HtmlConverter: {}", e.getMessage());
+            com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream);
         }
+        
+        log.info("PDF invoice generated successfully for order: {}", order.getOrderId());
+        return pdfOutputStream;
     }
 
     /**

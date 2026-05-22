@@ -117,18 +117,18 @@ public class OrderValidator {
      * Validate order items
      */
     public void validateOrderItems(Order order) {
-        Set<Long> itemIds = new HashSet<>();
+        Set<String> itemIds = new HashSet<>();
         BigDecimal itemsTotal = BigDecimal.ZERO;
 
         for (OrderItem item : order.getItems()) {
             // Check for duplicate items
-            if (!itemIds.add(item.getProduct().getProductId())) {
+            if (!itemIds.add(item.getProductId())) {
                 throw new DataIntegrityException("Order", 
-                    "Duplicate product in order: " + item.getProduct().getProductId());
+                    "Duplicate product in order: " + item.getProductId());
             }
 
             // Validate item data
-            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+            if (item.getQty() == null || item.getQty() <= 0) {
                 throw new DataIntegrityException("Order", "Item quantity must be positive");
             }
 
@@ -137,13 +137,13 @@ public class OrderValidator {
             }
 
             // Validate quantity limits
-            if (item.getQuantity() > 10000) {
+            if (item.getQty() > 10000) {
                 throw new DataIntegrityException("Order", 
-                    "Item quantity exceeds maximum limit: " + item.getQuantity());
+                    "Item quantity exceeds maximum limit: " + item.getQty());
             }
 
             itemsTotal = itemsTotal.add(
-                item.getPrice().multiply(new BigDecimal(item.getQuantity()))
+                item.getPrice().multiply(new BigDecimal(item.getQty()))
             );
         }
 
