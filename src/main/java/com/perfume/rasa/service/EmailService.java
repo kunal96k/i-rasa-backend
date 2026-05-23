@@ -114,13 +114,14 @@ public class EmailService {
                                        java.math.BigDecimal subtotal, java.math.BigDecimal discount,
                                        java.math.BigDecimal shipping, java.math.BigDecimal total,
                                        String paymentMethod, String deliveryAddress, String city,
-                                       java.time.LocalDate expectedDeliveryDate) {
+                                       java.time.LocalDate expectedDeliveryDate,
+                                       byte[] pdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail, fromName);
             helper.setTo(toEmail);
-            helper.setSubject("Order #" + orderId + " Received — I Rasa Perfumes");
+            helper.setSubject("Order RASA-" + orderId + " Received — I Rasa Perfumes");
 
             Context ctx = new Context();
             ctx.setVariable("fullName", fullName);
@@ -143,6 +144,11 @@ public class EmailService {
 
             String html = templateEngine.process("email/order-confirmation", ctx);
             helper.setText(html, true);
+
+            if (pdfBytes != null && pdfBytes.length > 0) {
+                helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+
             mailSender.send(message);
             log.info("Order received email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
@@ -158,13 +164,14 @@ public class EmailService {
                                         java.math.BigDecimal subtotal, java.math.BigDecimal discount,
                                         java.math.BigDecimal shipping, java.math.BigDecimal total,
                                         String paymentMethod, String deliveryAddress, String city,
-                                        java.time.LocalDate expectedDeliveryDate) {
+                                        java.time.LocalDate expectedDeliveryDate,
+                                        byte[] pdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail, fromName);
             helper.setTo(toEmail);
-            helper.setSubject("🎉 Order #" + orderId + " Confirmed — I Rasa Perfumes");
+            helper.setSubject("🎉 Order RASA-" + orderId + " Confirmed — I Rasa Perfumes");
 
             Context ctx = new Context();
             ctx.setVariable("fullName", fullName);
@@ -187,6 +194,11 @@ public class EmailService {
 
             String html = templateEngine.process("email/order-confirmation", ctx);
             helper.setText(html, true);
+
+            if (pdfBytes != null && pdfBytes.length > 0) {
+                helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+
             mailSender.send(message);
             log.info("Order confirmed email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
@@ -199,7 +211,8 @@ public class EmailService {
                                         java.math.BigDecimal subtotal, java.math.BigDecimal discount,
                                         java.math.BigDecimal shipping, java.math.BigDecimal total,
                                         String paymentMethod, String deliveryAddress, String city,
-                                        java.time.LocalDate expectedDeliveryDate) {
+                                        java.time.LocalDate expectedDeliveryDate,
+                                        byte[] pdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -228,10 +241,34 @@ public class EmailService {
 
             String html = templateEngine.process("email/order-delivered", ctx);
             helper.setText(html, true);
+
+            if (pdfBytes != null && pdfBytes.length > 0) {
+                helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+
             mailSender.send(message);
             log.info("Order delivered email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
             log.error("Failed to send order delivered email for order #{}: {}", orderId, e.getMessage());
         }
     }
+
+    /**
+     * Send a simple plain-text email notification.
+     */
+    public void sendSimpleEmail(String toEmail, String subject, String body) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(body, false);
+            mailSender.send(message);
+            log.info("Simple email sent to {} — subject: {}", toEmail, subject);
+        } catch (Exception e) {
+            log.error("Failed to send simple email to {}: {}", toEmail, e.getMessage());
+        }
+    }
 }
+

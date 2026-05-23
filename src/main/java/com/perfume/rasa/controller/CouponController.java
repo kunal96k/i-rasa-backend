@@ -15,7 +15,7 @@ public class CouponController {
     @Autowired
     private CouponService couponService;
 
-    @PostMapping("/validate")
+    @PostMapping(value = { "/validate", "/validate/" })
     public ResponseEntity<ApiResponse> validateCoupon(
             @RequestBody CouponValidateRequest request,
             org.springframework.security.core.Authentication authentication) {
@@ -23,16 +23,15 @@ public class CouponController {
             CouponValidateResponse response = couponService.validateCoupon(request, authentication);
             return ResponseEntity.ok(new ApiResponse(true, "Coupon applied successfully", response));
         } catch (Exception e) {
-            // Return HTTP 200 with success=false so front-end receives a JSON body
-            // and avoids browser console errors for 4xx responses during validation flow.
             return ResponseEntity.ok(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
-    @GetMapping
+    @GetMapping(value = { "", "/" })
     public ResponseEntity<ApiResponse> getActiveCoupons() {
         try {
-            return ResponseEntity.ok(new ApiResponse(true, "Active coupons retrieved successfully", couponService.getActiveCoupons()));
+            return ResponseEntity.ok(
+                    new ApiResponse(true, "Active coupons retrieved successfully", couponService.getActiveCoupons()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
         }

@@ -11,7 +11,7 @@ public class Address {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
@@ -39,6 +39,12 @@ public class Address {
     @Column(name = "is_temporary_order_address", nullable = false)
     private boolean temporaryOrderAddress = false;
 
+    @Column
+    private String email;
+
+    @Column
+    private String phone;
+
     public Address() {}
 
     public Long getId() { return id; }
@@ -61,4 +67,8 @@ public class Address {
     public void setDefault(boolean isDefault) { this.isDefault = isDefault; }
     public boolean isTemporaryOrderAddress() { return temporaryOrderAddress; }
     public void setTemporaryOrderAddress(boolean temporaryOrderAddress) { this.temporaryOrderAddress = temporaryOrderAddress; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 }

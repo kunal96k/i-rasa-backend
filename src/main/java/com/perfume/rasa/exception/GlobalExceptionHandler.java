@@ -33,6 +33,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ApiResponse(false, ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse> handleNoResourceFoundException(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Resource not found: " + ex.getResourcePath()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleGeneralException(Exception ex) {
         log.error("Unhandled exception: ", ex);

@@ -1,14 +1,18 @@
 package com.perfume.rasa.controller;
 
 import com.perfume.rasa.dto.ApiResponse;
+import com.perfume.rasa.model.ContactTicket;
+import com.perfume.rasa.repository.UserRepository;
 import com.perfume.rasa.service.ContactTicketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,18 +27,55 @@ public class ContactController {
     @Autowired
     private ContactTicketService contactTicketService;
 
+    @Autowired
+    private UserRepository userRepository;
+
     /**
      * Submit contact form/ticket
-     * @param requestBody containing name, email, subject, message
+     * @param requestBody containing name, email, subject, message, and optional orderId
      * @return Response with success status and message
      */
     @PostMapping("/submit-ticket")
-    public ResponseEntity<?> submitContactTicket(@RequestBody Map<String, String> requestBody) {
+    public ResponseEntity<?> submitContactTicket(
+            @RequestBody Map<String, Object> requestBody,
+            Authentication authentication) {
         try {
-            String name = requestBody.getOrDefault("name", "").trim();
-            String email = requestBody.getOrDefault("email", "").trim();
-            String subject = requestBody.getOrDefault("subject", "").trim();
-            String message = requestBody.getOrDefault("message", "").trim();
+            String subject = requestBody.containsKey("subject") ? requestBody.get("subject").toString().trim() : "";
+            String message = requestBody.containsKey("message") ? requestBody.get("message").toString().trim() : "";
+            
+            // Allow orderId in request
+            Long orderId = null;
+            if (requestBody.containsKey("orderId")) {
+                Object oId = requestBody.get("orderId");
+                if (oId != null && !oId.toString().isEmpty()) {
+                    try {
+                        orderId = Long.parseLong(oId.toString());
+                    } catch (NumberFormatException nfe) {
+                        log.warn("Invalid orderId format in ticket submission: {}", oId);
+                    }
+                }
+            }
+
+            String name = "";
+            String email = "";
+            String username = null;
+
+            if (authentication != null) {
+                username = authentication.getName();
+                com.perfume.rasa.model.User user = userRepository.findByEmail(username).orElse(null);
+                if (user != null) {
+                    name = user.getFullName();
+                    email = user.getEmail();
+                }
+            }
+
+            // Fallback to requestBody if not authenticated
+            if (name.isEmpty() && requestBody.containsKey("name")) {
+                name = requestBody.get("name").toString().trim();
+            }
+            if (email.isEmpty() && requestBody.containsKey("email")) {
+                email = requestBody.get("email").toString().trim();
+            }
 
             // Validate inputs
             if (name.isEmpty() || email.isEmpty() || subject.isEmpty() || message.isEmpty()) {
@@ -55,15 +96,15 @@ public class ContactController {
             }
 
             // Submit ticket
-            boolean success = contactTicketService.submitContactTicket(name, email, subject, message);
+            String ticketId = contactTicketService.submitContactTicket(name, email, subject, message, username, orderId);
 
-            if (success) {
+            if (ticketId != null) {
                 Map<String, Object> response = new HashMap<>();
-                response.put("ticketId", "TKT-" + System.currentTimeMillis());
+                response.put("ticketId", ticketId);
                 response.put("submittedAt", System.currentTimeMillis());
-                response.put("message", "Ticket submitted! We will contact you via email.");
+                response.put("message", "Ticket submitted successfully.");
 
-                log.info("Contact ticket submitted successfully from: {}", email);
+                log.info("Contact ticket {} submitted successfully from: {}", ticketId, email);
                 return ResponseEntity.ok().body(new ApiResponse(
                     true,
                     "Ticket submitted successfully. We'll contact you soon.",
@@ -82,6 +123,37 @@ public class ContactController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(
                 false,
                 "An error occurred while processing your request",
+                null
+            ));
+        }
+    }
+
+    /**
+     * Get tickets for the logged in user
+     */
+    @GetMapping("/my-tickets")
+    public ResponseEntity<?> getMyTickets(Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse(
+                    false,
+                    "Unauthorized",
+                    null
+                ));
+            }
+
+            List<ContactTicket> tickets = contactTicketService.getTicketsForUser(authentication.getName());
+
+            return ResponseEntity.ok().body(new ApiResponse(
+                true,
+                "Tickets retrieved successfully",
+                tickets
+            ));
+        } catch (Exception e) {
+            log.error("Error retrieving user tickets", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(
+                false,
+                "An error occurred while processing your request: " + e.getMessage(),
                 null
             ));
         }

@@ -97,7 +97,7 @@ public class DataValidator {
         if (status == null) {
             return false;
         }
-        return status.matches("^(PENDING|PROCESSING|COMPLETED|CANCELLED|CONFIRMED|SHIPPED|DELIVERED)$");
+        return status.matches("^(PENDING|PROCESSING|COMPLETED|CANCELLED|CONFIRMED|SHIPPED|DELIVERED|REFUNDED|EXCHANGED)$");
     }
 
     /**

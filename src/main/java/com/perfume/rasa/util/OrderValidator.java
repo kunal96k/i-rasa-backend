@@ -170,35 +170,46 @@ public class OrderValidator {
             case "PENDING":
                 // From PENDING, can go to PROCESSING, CANCELLED, or CONFIRMED
                 if (!newStatus.matches("(PROCESSING|CANCELLED|CONFIRMED)")) {
-                    throw new DataIntegrityException("Order", 
+                    throw new DataIntegrityException("Order",
                         "Cannot transition from PENDING to " + newStatus);
                 }
                 break;
             case "PROCESSING":
                 // From PROCESSING, can go to SHIPPED or CANCELLED
                 if (!newStatus.matches("(SHIPPED|CANCELLED)")) {
-                    throw new DataIntegrityException("Order", 
+                    throw new DataIntegrityException("Order",
                         "Cannot transition from PROCESSING to " + newStatus);
                 }
                 break;
             case "CONFIRMED":
                 // From CONFIRMED, can go to PROCESSING or CANCELLED
                 if (!newStatus.matches("(PROCESSING|CANCELLED)")) {
-                    throw new DataIntegrityException("Order", 
+                    throw new DataIntegrityException("Order",
                         "Cannot transition from CONFIRMED to " + newStatus);
                 }
                 break;
             case "SHIPPED":
                 // From SHIPPED, can only go to DELIVERED or CANCELLED
                 if (!newStatus.matches("(DELIVERED|CANCELLED)")) {
-                    throw new DataIntegrityException("Order", 
+                    throw new DataIntegrityException("Order",
                         "Cannot transition from SHIPPED to " + newStatus);
                 }
                 break;
             case "DELIVERED":
+                // From DELIVERED, customers can request REFUNDED or EXCHANGED
+                if (!newStatus.matches("(REFUNDED|EXCHANGED)")) {
+                    throw new DataIntegrityException("Order",
+                        "Cannot transition from DELIVERED to " + newStatus);
+                }
+                break;
             case "CANCELLED":
+                // Terminal state, cannot transition
+                throw new DataIntegrityException("Order",
+                    "Cannot change status from terminal state: " + currentStatus);
+            case "REFUNDED":
+            case "EXCHANGED":
                 // Terminal states, cannot transition
-                throw new DataIntegrityException("Order", 
+                throw new DataIntegrityException("Order",
                     "Cannot change status from terminal state: " + currentStatus);
             default:
                 throw new DataIntegrityException("Order", "Unknown order status: " + currentStatus);

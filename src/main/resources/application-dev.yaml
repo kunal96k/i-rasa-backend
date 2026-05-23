@@ -51,6 +51,7 @@ app:
   base-url: http://localhost:8080
   cors:
     allowed-origin-patterns:
+      - "*"
       - "null"
       - http://localhost:5173
       - http://localhost:3000

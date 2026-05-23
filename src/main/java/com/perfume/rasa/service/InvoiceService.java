@@ -5,6 +5,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.perfume.rasa.model.Order;
 import com.perfume.rasa.model.OrderItem;
+import com.perfume.rasa.model.Address;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,23 +45,29 @@ public class InvoiceService {
             com.itextpdf.html2pdf.ConverterProperties props = new com.itextpdf.html2pdf.ConverterProperties();
             com.itextpdf.layout.font.FontProvider fontProvider = new com.itextpdf.layout.font.FontProvider();
 
-            // Try to load the Samarkan font from the front-end fonts folder (workspace)
-            // Relative path from the `rasa` module to the i-rasa frontend fonts directory
-            String possibleFontPath = "../i-rasa/fonts/SAMARN__.TTF";
-            try {
-                java.nio.file.Path fp = java.nio.file.Paths.get(possibleFontPath).toAbsolutePath();
-                if (java.nio.file.Files.exists(fp)) {
-                    fontProvider.addFont(fp.toString());
+            // Try to load the Samarkan font from possible locations
+            String[] possibleFontPaths = {
+                "../i-rasa/Samarkan-font/SAMARN__.TTF",
+                "../i-rasa/fonts/SAMARN__.TTF",
+                "c:/Users/TechnoKraft/Desktop/i-rasa/i-rasa/Samarkan-font/SAMARN__.TTF"
+            };
+            for (String fontPath : possibleFontPaths) {
+                try {
+                    java.nio.file.Path fp = java.nio.file.Paths.get(fontPath).toAbsolutePath();
+                    if (java.nio.file.Files.exists(fp)) {
+                        fontProvider.addFont(fp.toString());
+                        log.info("Successfully registered Samarkan font from: {}", fp.toString());
+                    }
+                } catch (Exception ex) {
+                    // ignore and try next
                 }
-            } catch (Exception ex) {
-                // ignore and continue; fallback to system fonts
             }
 
             // Add default fonts as fallback
             fontProvider.addStandardPdfFonts();
             props.setFontProvider(fontProvider);
 
-            // Set a base URI so relative resources (images/css) inside templates resolve
+            // Set a base URI so relative resources (images/css) resolve
             props.setBaseUri(".");
 
             com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream, props);
@@ -70,7 +77,7 @@ public class InvoiceService {
             com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream);
         }
         
-        log.info("PDF invoice generated successfully for order: {}", order.getOrderId());
+        log.info("PDF invoice generated successfully for order: {}", order.getId());
         return pdfOutputStream;
     }
 
@@ -85,27 +92,47 @@ public class InvoiceService {
         // Add order data to context
         context.setVariable("orderId", order.getId());
         context.setVariable("orderStatus", order.getStatus());
-        context.setVariable("createdAt", new SimpleDateFormat("dd MMM yyyy").format(order.getCreatedAt()));
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy");
+        java.util.Date orderDate = java.sql.Timestamp.valueOf(order.getCreatedAt());
+        context.setVariable("createdAt", sdf.format(orderDate));
+        
         context.setVariable("expectedDeliveryDate", 
             order.getExpectedDeliveryDate() != null ? 
-            new SimpleDateFormat("dd MMM yyyy").format(order.getExpectedDeliveryDate()) : "N/A");
-        context.setVariable("currencySymbol", "$ ");
-        context.setVariable("currencyCode", "USD");
-        context.setVariable("currencyLabel", "USD");
+            sdf.format(java.sql.Date.valueOf(order.getExpectedDeliveryDate())) : "N/A");
+        context.setVariable("currencySymbol", "Rs. ");
+        context.setVariable("currencyCode", "INR");
+        context.setVariable("currencyLabel", "INR");
         context.setVariable("companyEmail", "support@rasaperfumes.in");
         context.setVariable("companyWebsite", "www.irasaperfumes.in");
         
-        // Add user info
-        context.setVariable("customerName", order.getUser().getFullName());
-        context.setVariable("customerEmail", order.getUser().getEmail());
-        context.setVariable("customerPhone", order.getUser().getPhone());
+        // Add user/guest info
+        String customerName = "Customer";
+        String customerEmail = "N/A";
+        String customerPhone = "N/A";
+        if (order.getUser() != null) {
+            customerName = order.getUser().getFullName() != null ? order.getUser().getFullName() : "Customer";
+            customerEmail = order.getUser().getEmail() != null ? order.getUser().getEmail() : "N/A";
+            customerPhone = order.getUser().getPhone() != null ? order.getUser().getPhone() : "N/A";
+        } else if (order.getBillingAddress() != null) {
+            customerName = order.getBillingAddress().getFullName() != null ? order.getBillingAddress().getFullName() : "Customer";
+            customerEmail = order.getBillingAddress().getEmail() != null ? order.getBillingAddress().getEmail() : "N/A";
+            customerPhone = order.getBillingAddress().getPhone() != null ? order.getBillingAddress().getPhone() : "N/A";
+        }
+        context.setVariable("customerName", customerName);
+        context.setVariable("customerEmail", customerEmail);
+        context.setVariable("customerPhone", customerPhone);
         
         // Add addresses
         if (order.getBillingAddress() != null) {
             context.setVariable("billingAddress", formatAddress(order.getBillingAddress()));
+        } else {
+            context.setVariable("billingAddress", "N/A");
         }
         if (order.getShippingAddress() != null) {
             context.setVariable("shippingAddress", formatAddress(order.getShippingAddress()));
+        } else {
+            context.setVariable("shippingAddress", "N/A");
         }
         
         // Add items
@@ -114,10 +141,10 @@ public class InvoiceService {
         
         // Add pricing breakdown
         context.setVariable("subtotal", order.getSubtotal());
-        context.setVariable("discount", order.getDiscount());
-        context.setVariable("shipping", order.getShipping());
-        context.setVariable("handlingCharge", order.getHandlingCharge());
-        context.setVariable("platformFee", order.getPlatformFee());
+        context.setVariable("discount", order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO);
+        context.setVariable("shipping", order.getShipping() != null ? order.getShipping() : BigDecimal.ZERO);
+        context.setVariable("handlingCharge", order.getHandlingCharge() != null ? order.getHandlingCharge() : BigDecimal.ZERO);
+        context.setVariable("platformFee", order.getPlatformFee() != null ? order.getPlatformFee() : BigDecimal.ZERO);
         context.setVariable("total", order.getTotal());
         
         // Add payment info
@@ -127,7 +154,7 @@ public class InvoiceService {
         // Add coupon info if applied
         if (order.getCouponCode() != null && !order.getCouponCode().isEmpty()) {
             context.setVariable("couponCode", order.getCouponCode());
-            context.setVariable("discountAmount", order.getDiscount());
+            context.setVariable("discountAmount", order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO);
         }
         
         // Process template and return HTML
@@ -137,21 +164,26 @@ public class InvoiceService {
     /**
      * Format address object into readable string
      */
-    private String formatAddress(Object address) {
-        if (address == null) return "";
-        try {
-            // Use reflection to get address fields
-            String street = (String) address.getClass().getMethod("getStreet").invoke(address);
-            String city = (String) address.getClass().getMethod("getCity").invoke(address);
-            String state = (String) address.getClass().getMethod("getState").invoke(address);
-            String zipCode = (String) address.getClass().getMethod("getZipCode").invoke(address);
-            String country = (String) address.getClass().getMethod("getCountry").invoke(address);
-            
-            return String.format("%s, %s, %s - %s, %s", street, city, state, zipCode, country);
-        } catch (Exception e) {
-            log.warn("Error formatting address: {}", e.getMessage());
-            return address.toString();
+    private String formatAddress(Address address) {
+        if (address == null) return "N/A";
+        StringBuilder sb = new StringBuilder();
+        if (address.getAddressLine1() != null) {
+            sb.append(address.getAddressLine1());
         }
+        if (address.getAreaLocality() != null && !address.getAreaLocality().trim().isEmpty()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(address.getAreaLocality().trim());
+        }
+        sb.append("<br/>");
+        if (address.getCity() != null && !address.getCity().trim().isEmpty()) {
+            sb.append(address.getCity().trim());
+        }
+        if (address.getPincode() != null && !address.getPincode().trim().isEmpty()) {
+            if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') sb.append(" - ");
+            sb.append(address.getPincode().trim());
+        }
+        sb.append(", India");
+        return sb.toString();
     }
 
     /**
@@ -164,18 +196,32 @@ public class InvoiceService {
         summary.put("status", order.getStatus());
         summary.put("createdAt", order.getCreatedAt());
         summary.put("expectedDeliveryDate", order.getExpectedDeliveryDate());
-        summary.put("customer", order.getUser().getFullName());
-        summary.put("customerPhone", order.getUser().getPhone());
-        summary.put("email", order.getUser().getEmail());
+        
+        String customerName = "Customer";
+        String customerEmail = "N/A";
+        String customerPhone = "N/A";
+        if (order.getUser() != null) {
+            customerName = order.getUser().getFullName() != null ? order.getUser().getFullName() : "Customer";
+            customerEmail = order.getUser().getEmail() != null ? order.getUser().getEmail() : "N/A";
+            customerPhone = order.getUser().getPhone() != null ? order.getUser().getPhone() : "N/A";
+        } else if (order.getBillingAddress() != null) {
+            customerName = order.getBillingAddress().getFullName() != null ? order.getBillingAddress().getFullName() : "Customer";
+            customerEmail = order.getBillingAddress().getEmail() != null ? order.getBillingAddress().getEmail() : "N/A";
+            customerPhone = order.getBillingAddress().getPhone() != null ? order.getBillingAddress().getPhone() : "N/A";
+        }
+        
+        summary.put("customer", customerName);
+        summary.put("customerPhone", customerPhone);
+        summary.put("email", customerEmail);
         summary.put("items", order.getItems());
         summary.put("subtotal", order.getSubtotal());
-        summary.put("discount", order.getDiscount());
-        summary.put("shipping", order.getShipping());
-        summary.put("handlingCharge", order.getHandlingCharge());
-        summary.put("platformFee", order.getPlatformFee());
+        summary.put("discount", order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO);
+        summary.put("shipping", order.getShipping() != null ? order.getShipping() : BigDecimal.ZERO);
+        summary.put("handlingCharge", order.getHandlingCharge() != null ? order.getHandlingCharge() : BigDecimal.ZERO);
+        summary.put("platformFee", order.getPlatformFee() != null ? order.getPlatformFee() : BigDecimal.ZERO);
         summary.put("total", order.getTotal());
-        summary.put("currencySymbol", "$ ");
-        summary.put("currencyLabel", "USD");
+        summary.put("currencySymbol", "₹ ");
+        summary.put("currencyLabel", "INR");
         summary.put("paymentMethod", order.getPaymentMethod());
         summary.put("billingAddress", formatAddress(order.getBillingAddress()));
         summary.put("shippingAddress", formatAddress(order.getShippingAddress()));

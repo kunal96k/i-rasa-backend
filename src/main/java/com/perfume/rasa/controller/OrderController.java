@@ -5,6 +5,8 @@ import com.perfume.rasa.dto.OrderRequestDTO;
 import com.perfume.rasa.dto.OrderResponseDTO;
 import com.perfume.rasa.model.Order;
 import com.perfume.rasa.repository.OrderRepository;
+import com.perfume.rasa.repository.UserRepository;
+import com.perfume.rasa.model.User;
 import com.perfume.rasa.service.InvoiceService;
 import com.perfume.rasa.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +43,9 @@ public class OrderController {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Value("${app.upload.storage-dir:upload}")
     private String uploadDir;
@@ -105,44 +110,34 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse> getOrder(@PathVariable Long orderId, Authentication authentication) {
         try {
-            // Allow access by authenticated users OR by providing a valid access token for guest orders
-            String principal = authentication != null ? authentication.getName() : null;
-            String accessToken = null;
-            // accept token as query param
-            // note: Spring will map query params automatically if present; read from request
-            accessToken = org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()
-                    .getAttribute("javax.servlet.forward.query_string", 0) == null ? null : null;
-
             // Simple approach: read token param from request
+            String accessToken = null;
             HttpServletRequest request = ((org.springframework.web.context.request.ServletRequestAttributes)
                     org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
             if (request != null) {
                 accessToken = request.getParameter("token");
             }
 
-            // If authenticated, return order if allowed
-            if (principal != null) {
-                OrderResponseDTO response = orderService.getOrderForUser(orderId, principal);
-                return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", response));
-            }
-
-            // If not authenticated, allow access if token matches the order access token
             java.util.Optional<com.perfume.rasa.model.Order> orderOpt = orderRepository.findById(orderId);
             if (!orderOpt.isPresent()) {
                 return ResponseEntity.status(404).body(new ApiResponse(false, "Order not found", null));
             }
             com.perfume.rasa.model.Order order = orderOpt.get();
-            if (order.getUser() != null) {
-                // order belongs to a user but request is unauthenticated
-                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
-            }
 
+            // 1. If token matches, allow access (both authenticated and guest orders)
             if (accessToken != null && accessToken.equals(order.getAccessToken())) {
                 OrderResponseDTO dto = orderService.mapToResponseDTO(order);
                 return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", dto));
             }
 
-            return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
+            // 2. Otherwise check if authenticated, and let OrderService check permission
+            String principal = authentication != null ? authentication.getName() : null;
+            if (principal != null) {
+                OrderResponseDTO response = orderService.getOrderForUser(orderId, principal);
+                return ResponseEntity.ok(new ApiResponse(true, "Order retrieved successfully", response));
+            }
+
+            return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
         }
@@ -195,12 +190,9 @@ public class OrderController {
     @GetMapping("/{orderId}/invoice")
     public ResponseEntity<ApiResponse> getInvoice(
             @PathVariable Long orderId,
+            @RequestParam(value = "token", required = false) String token,
             Authentication authentication) {
         try {
-            if (authentication == null) {
-                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
-            }
-
             Optional<Order> orderOpt = orderRepository.findById(orderId);
             if (!orderOpt.isPresent()) {
                 return ResponseEntity.notFound().build();
@@ -208,8 +200,26 @@ public class OrderController {
 
             Order order = orderOpt.get();
             
-            // Verify ownership
-            if (!order.getUser().getEmail().equals(authentication.getName())) {
+            boolean authorized = false;
+            // 1. Authorized if token matches
+            if (token != null && token.equals(order.getAccessToken())) {
+                authorized = true;
+            }
+            // 2. Authorized if user is logged in and owns the order, or is admin
+            else if (authentication != null) {
+                String username = authentication.getName();
+                Optional<User> currentUserOpt = userRepository.findByEmail(username);
+                if (currentUserOpt.isPresent()) {
+                    User currentUser = currentUserOpt.get();
+                    if (currentUser.getRole() == User.Role.ADMIN) {
+                        authorized = true;
+                    } else if (order.getUser() != null && order.getUser().getId().equals(currentUser.getId())) {
+                        authorized = true;
+                    }
+                }
+            }
+
+            if (!authorized) {
                 return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
             }
 
@@ -229,12 +239,9 @@ public class OrderController {
     @GetMapping("/{orderId}/invoice/download")
     public ResponseEntity<?> downloadInvoicePDF(
             @PathVariable Long orderId,
+            @RequestParam(value = "token", required = false) String token,
             Authentication authentication) {
         try {
-            if (authentication == null) {
-                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
-            }
-
             Optional<Order> orderOpt = orderRepository.findById(orderId);
             if (!orderOpt.isPresent()) {
                 return ResponseEntity.notFound().build();
@@ -242,8 +249,26 @@ public class OrderController {
 
             Order order = orderOpt.get();
             
-            // Verify ownership
-            if (!order.getUser().getEmail().equals(authentication.getName())) {
+            boolean authorized = false;
+            // 1. Authorized if token matches
+            if (token != null && token.equals(order.getAccessToken())) {
+                authorized = true;
+            }
+            // 2. Authorized if user is logged in and owns the order, or is admin
+            else if (authentication != null) {
+                String username = authentication.getName();
+                Optional<User> currentUserOpt = userRepository.findByEmail(username);
+                if (currentUserOpt.isPresent()) {
+                    User currentUser = currentUserOpt.get();
+                    if (currentUser.getRole() == User.Role.ADMIN) {
+                        authorized = true;
+                    } else if (order.getUser() != null && order.getUser().getId().equals(currentUser.getId())) {
+                        authorized = true;
+                    }
+                }
+            }
+
+            if (!authorized) {
                 return ResponseEntity.status(403).body(new ApiResponse(false, "Access denied", null));
             }
 
@@ -262,8 +287,71 @@ public class OrderController {
 
         } catch (Exception e) {
             log.error("Error generating PDF invoice for order: {}", orderId, e);
-            return ResponseEntity.status(500).body(new ApiResponse(false, 
+            return ResponseEntity.status(500).body(new ApiResponse(false,
                 "Failed to generate invoice PDF", null));
+        }
+    }
+
+    /**
+     * Customer cancels their own PENDING or CONFIRMED order.
+     */
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<ApiResponse> cancelOrder(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+            String reason = body != null ? body.getOrDefault("reason", "") : "";
+            OrderResponseDTO response = orderService.cancelOrder(orderId, reason, authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Order cancelled successfully", response));
+        } catch (Exception e) {
+            log.error("Error cancelling order {}: {}", orderId, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Customer requests a refund on a DELIVERED order.
+     */
+    @PostMapping("/{orderId}/refund-request")
+    public ResponseEntity<ApiResponse> requestRefund(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+            String reason = body != null ? body.getOrDefault("reason", "") : "";
+            OrderResponseDTO response = orderService.requestRefund(orderId, reason, authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Refund request submitted successfully", response));
+        } catch (Exception e) {
+            log.error("Error requesting refund for order {}: {}", orderId, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Customer requests an exchange on a DELIVERED order.
+     */
+    @PostMapping("/{orderId}/exchange-request")
+    public ResponseEntity<ApiResponse> requestExchange(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+            }
+            String reason = body != null ? body.getOrDefault("reason", "") : "";
+            OrderResponseDTO response = orderService.requestExchange(orderId, reason, authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Exchange request submitted successfully", response));
+        } catch (Exception e) {
+            log.error("Error requesting exchange for order {}: {}", orderId, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 }

@@ -31,11 +31,13 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final InvoiceService invoiceService;
 
-    public OrderService(OrderRepository orderRepository, UserRepository userRepository, EmailService emailService) {
+    public OrderService(OrderRepository orderRepository, UserRepository userRepository, EmailService emailService, InvoiceService invoiceService) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.invoiceService = invoiceService;
     }
 
     @Transactional
@@ -71,8 +73,10 @@ public class OrderService {
             billing.setPincode(billingDTO.getZip());
             billing.setDefault(false);
             billing.setTemporaryOrderAddress(true);
+            billing.setEmail(billingDTO.getEmail());
+            billing.setPhone(billingDTO.getPhone());
             order.setBillingAddress(billing);
-
+ 
             BillingRequestDTO shippingDTO = request.getShippingAddress();
             if (shippingDTO != null) {
                 Address shipping = new Address();
@@ -87,6 +91,8 @@ public class OrderService {
                 shipping.setPincode(shippingDTO.getZip());
                 shipping.setDefault(false);
                 shipping.setTemporaryOrderAddress(true);
+                shipping.setEmail(shippingDTO.getEmail() != null ? shippingDTO.getEmail() : billing.getEmail());
+                shipping.setPhone(shippingDTO.getPhone() != null ? shippingDTO.getPhone() : billing.getPhone());
                 order.setShippingAddress(shipping);
             } else {
                 Address shipping = new Address();
@@ -99,6 +105,8 @@ public class OrderService {
                 shipping.setPincode(billing.getPincode());
                 shipping.setDefault(false);
                 shipping.setTemporaryOrderAddress(true);
+                shipping.setEmail(billing.getEmail());
+                shipping.setPhone(billing.getPhone());
                 order.setShippingAddress(shipping);
             }
         }
@@ -131,8 +139,14 @@ public class OrderService {
         order.setStatus("PENDING");
         order.setCreatedAt(LocalDateTime.now());
         
-        // Expected delivery date: e.g. 5 days from now
-        order.setExpectedDeliveryDate(LocalDate.now().plusDays(5));
+        // Expected delivery date based on shipping location
+        String shippingCity = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
+                : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
+        int deliveryDays = 8; // Default: 8 days for outside Nashik
+        if (shippingCity != null && shippingCity.toLowerCase().contains("nashik")) {
+            deliveryDays = 3; // 3 days for Nashik
+        }
+        order.setExpectedDeliveryDate(LocalDate.now().plusDays(deliveryDays));
 
         // If guest order (no user) generate an access token so the guest can view the order
         if (user == null) {
@@ -143,15 +157,34 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         // Send order received email immediately after placement
+        String recipientEmail = null;
         if (user != null && user.getEmail() != null) {
-            String fullName = user.getFullName() != null ? user.getFullName() :
-                    (order.getBillingAddress() != null ? order.getBillingAddress().getFullName() : "Customer");
+            recipientEmail = user.getEmail();
+        } else if (order.getBillingAddress() != null && order.getBillingAddress().getEmail() != null) {
+            recipientEmail = order.getBillingAddress().getEmail().trim();
+        }
+
+        if (recipientEmail != null && !recipientEmail.isEmpty()) {
+            String fullName = "Customer";
+            if (user != null && user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
+                fullName = user.getFullName().trim();
+            } else if (order.getBillingAddress() != null && order.getBillingAddress().getFullName() != null && !order.getBillingAddress().getFullName().trim().isEmpty()) {
+                fullName = order.getBillingAddress().getFullName().trim();
+            }
             String deliveryAddressStr = buildDeliveryAddress(order);
             String city = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
                     : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
 
+            byte[] pdfBytes = null;
+            try {
+                java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(savedOrder);
+                pdfBytes = pdfStream.toByteArray();
+            } catch (Exception e) {
+                log.error("Failed to generate PDF invoice for order placement email: {}", e.getMessage());
+            }
+
             emailService.sendOrderReceivedEmail(
-                    user.getEmail(),
+                    recipientEmail,
                     fullName,
                     savedOrder.getId(),
                     request.getItems(),
@@ -162,7 +195,8 @@ public class OrderService {
                     savedOrder.getPaymentMethod(),
                     deliveryAddressStr,
                     city,
-                    savedOrder.getExpectedDeliveryDate()
+                    savedOrder.getExpectedDeliveryDate(),
+                    pdfBytes
             );
         }
 
@@ -191,7 +225,11 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
-        if (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
+        if (order.getUser() == null) {
+            if (user.getRole() != User.Role.ADMIN) {
+                throw new RuntimeException("Unauthorized access to order");
+            }
+        } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
             throw new RuntimeException("Unauthorized access to order");
         }
 
@@ -214,6 +252,8 @@ public class OrderService {
         dto.setExpectedDeliveryDate(order.getExpectedDeliveryDate());
         if (order.getUser() != null) {
             dto.setUserEmail(order.getUser().getEmail());
+        } else if (order.getBillingAddress() != null) {
+            dto.setUserEmail(order.getBillingAddress().getEmail());
         }
 
         if (order.getBillingAddress() != null) {
@@ -234,10 +274,8 @@ public class OrderService {
             billingDTO.setAddress2(order.getBillingAddress().getAreaLocality());
             billingDTO.setCity(order.getBillingAddress().getCity());
             billingDTO.setZip(order.getBillingAddress().getPincode());
-            if (order.getUser() != null) {
-                billingDTO.setPhone(order.getUser().getPhone());
-                billingDTO.setEmail(order.getUser().getEmail());
-            }
+            billingDTO.setPhone(order.getBillingAddress().getPhone() != null ? order.getBillingAddress().getPhone() : (order.getUser() != null ? order.getUser().getPhone() : null));
+            billingDTO.setEmail(order.getBillingAddress().getEmail() != null ? order.getBillingAddress().getEmail() : (order.getUser() != null ? order.getUser().getEmail() : null));
             dto.setBilling(billingDTO);
         }
 
@@ -259,10 +297,8 @@ public class OrderService {
             shippingDTO.setAddress2(order.getShippingAddress().getAreaLocality());
             shippingDTO.setCity(order.getShippingAddress().getCity());
             shippingDTO.setZip(order.getShippingAddress().getPincode());
-            if (order.getUser() != null) {
-                shippingDTO.setPhone(order.getUser().getPhone());
-                shippingDTO.setEmail(order.getUser().getEmail());
-            }
+            shippingDTO.setPhone(order.getShippingAddress().getPhone() != null ? order.getShippingAddress().getPhone() : (order.getUser() != null ? order.getUser().getPhone() : null));
+            shippingDTO.setEmail(order.getShippingAddress().getEmail() != null ? order.getShippingAddress().getEmail() : (order.getUser() != null ? order.getUser().getEmail() : null));
             dto.setShippingAddress(shippingDTO);
         }
 
@@ -292,8 +328,14 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
-        if (user != null && !order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
-            throw new RuntimeException("Unauthorized to update order status");
+        if (user != null) {
+            if (order.getUser() == null) {
+                if (user.getRole() != User.Role.ADMIN) {
+                    throw new RuntimeException("Unauthorized to update order status");
+                }
+            } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
+                throw new RuntimeException("Unauthorized to update order status");
+            }
         }
 
         order.setStatus(status);
@@ -307,12 +349,24 @@ public class OrderService {
     }
 
     private void sendOrderStatusEmail(Order order) {
-        if (order.getUser() == null || order.getUser().getEmail() == null) {
+        String recipientEmail = null;
+        if (order.getUser() != null && order.getUser().getEmail() != null) {
+            recipientEmail = order.getUser().getEmail();
+        } else if (order.getBillingAddress() != null && order.getBillingAddress().getEmail() != null) {
+            recipientEmail = order.getBillingAddress().getEmail().trim();
+        }
+
+        if (recipientEmail == null || recipientEmail.isEmpty()) {
             return;
         }
 
-        String fullName = order.getUser().getFullName() != null ? order.getUser().getFullName()
-                : order.getBillingAddress() != null ? order.getBillingAddress().getFullName() : "Customer";
+        String fullName = "Customer";
+        if (order.getUser() != null && order.getUser().getFullName() != null && !order.getUser().getFullName().trim().isEmpty()) {
+            fullName = order.getUser().getFullName().trim();
+        } else if (order.getBillingAddress() != null && order.getBillingAddress().getFullName() != null && !order.getBillingAddress().getFullName().trim().isEmpty()) {
+            fullName = order.getBillingAddress().getFullName().trim();
+        }
+
         String deliveryAddress = buildDeliveryAddress(order);
         String city = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
                 : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
@@ -329,10 +383,18 @@ public class OrderService {
             }
         }
 
+        byte[] pdfBytes = null;
+        try {
+            java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(order);
+            pdfBytes = pdfStream.toByteArray();
+        } catch (Exception e) {
+            log.error("Failed to generate PDF invoice for order status update email: {}", e.getMessage());
+        }
+
         switch (order.getStatus() != null ? order.getStatus().toUpperCase() : "") {
             case "CONFIRMED":
                 emailService.sendOrderConfirmedEmail(
-                        order.getUser().getEmail(),
+                        recipientEmail,
                         fullName,
                         order.getId(),
                         itemDTOs,
@@ -343,12 +405,13 @@ public class OrderService {
                         order.getPaymentMethod(),
                         deliveryAddress,
                         city,
-                        order.getExpectedDeliveryDate()
+                        order.getExpectedDeliveryDate(),
+                        pdfBytes
                 );
                 break;
             case "DELIVERED":
                 emailService.sendOrderDeliveredEmail(
-                        order.getUser().getEmail(),
+                        recipientEmail,
                         fullName,
                         order.getId(),
                         itemDTOs,
@@ -359,7 +422,8 @@ public class OrderService {
                         order.getPaymentMethod(),
                         deliveryAddress,
                         city,
-                        order.getExpectedDeliveryDate()
+                        order.getExpectedDeliveryDate(),
+                        pdfBytes
                 );
                 break;
             default:
@@ -431,5 +495,150 @@ public class OrderService {
         );
 
         return ordersPage.map(this::mapToResponseDTO);
+    }
+    /**
+     * Cancel an order — customers can cancel PENDING or CONFIRMED orders.
+     */
+    @Transactional
+    public OrderResponseDTO cancelOrder(Long orderId, String reason, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        // Only order owner can cancel (or admin)
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+            throw new RuntimeException("Unauthorized: you don't own this order");
+        }
+
+        String currentStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
+        if (!currentStatus.matches("(PENDING|CONFIRMED)")) {
+            throw new RuntimeException("Order cannot be cancelled in status: " + order.getStatus() +
+                ". Only PENDING or CONFIRMED orders can be cancelled.");
+        }
+
+        order.setStatus("CANCELLED");
+        if (reason != null && !reason.trim().isEmpty()) {
+            log.info("Order {} cancelled by user {} with reason: {}", orderId, username, reason);
+        }
+        Order saved = orderRepository.save(order);
+
+        // Send cancellation email
+        sendCancellationEmail(saved, reason);
+        return mapToResponseDTO(saved);
+    }
+
+    /**
+     * Request refund — customers can request refund on DELIVERED orders within policy window.
+     */
+    @Transactional
+    public OrderResponseDTO requestRefund(Long orderId, String reason, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+            throw new RuntimeException("Unauthorized: you don't own this order");
+        }
+
+        String currentStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
+        if (!currentStatus.equals("DELIVERED")) {
+            throw new RuntimeException("Refund can only be requested for DELIVERED orders. Current status: " + order.getStatus());
+        }
+
+        order.setStatus("REFUNDED");
+        log.info("Refund requested for order {} by {} — reason: {}", orderId, username, reason);
+        Order saved = orderRepository.save(order);
+
+        sendRefundRequestEmail(saved, reason);
+        return mapToResponseDTO(saved);
+    }
+
+    /**
+     * Request exchange — customers can request exchange on DELIVERED orders.
+     */
+    @Transactional
+    public OrderResponseDTO requestExchange(Long orderId, String reason, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+            throw new RuntimeException("Unauthorized: you don't own this order");
+        }
+
+        String currentStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
+        if (!currentStatus.equals("DELIVERED")) {
+            throw new RuntimeException("Exchange can only be requested for DELIVERED orders. Current status: " + order.getStatus());
+        }
+
+        order.setStatus("EXCHANGED");
+        log.info("Exchange requested for order {} by {} — reason: {}", orderId, username, reason);
+        Order saved = orderRepository.save(order);
+
+        sendExchangeRequestEmail(saved, reason);
+        return mapToResponseDTO(saved);
+    }
+
+    private void sendCancellationEmail(Order order, String reason) {
+        try {
+            String recipientEmail = order.getUser() != null ? order.getUser().getEmail()
+                    : (order.getBillingAddress() != null ? order.getBillingAddress().getEmail() : null);
+            String fullName = order.getUser() != null ? order.getUser().getFullName() : "Customer";
+            if (recipientEmail == null || recipientEmail.isEmpty()) return;
+
+            emailService.sendSimpleEmail(recipientEmail,
+                "Order #RASA-" + order.getId() + " Cancelled — I Rasa Perfumes",
+                "Dear " + fullName + ",\n\n" +
+                "Your order RASA-" + order.getId() + " has been successfully cancelled.\n" +
+                (reason != null && !reason.isBlank() ? "Reason: " + reason + "\n" : "") +
+                "\nIf you paid online, your refund will be processed within 5-7 business days.\n\n" +
+                "Thank you for shopping with I Rasa Perfumes.\n\nWarm regards,\nI Rasa Perfumes Team");
+        } catch (Exception e) {
+            log.error("Failed to send cancellation email for order {}: {}", order.getId(), e.getMessage());
+        }
+    }
+
+    private void sendRefundRequestEmail(Order order, String reason) {
+        try {
+            String recipientEmail = order.getUser() != null ? order.getUser().getEmail()
+                    : (order.getBillingAddress() != null ? order.getBillingAddress().getEmail() : null);
+            String fullName = order.getUser() != null ? order.getUser().getFullName() : "Customer";
+            if (recipientEmail == null || recipientEmail.isEmpty()) return;
+
+            emailService.sendSimpleEmail(recipientEmail,
+                "Refund Request Received — Order RASA-" + order.getId(),
+                "Dear " + fullName + ",\n\n" +
+                "We've received your refund request for order RASA-" + order.getId() + ".\n" +
+                (reason != null && !reason.isBlank() ? "Reason: " + reason + "\n" : "") +
+                "\nOur team will review your request and process the refund within 5-7 business days.\n\n" +
+                "For queries, contact us at support@rasaperfumes.in\n\nWarm regards,\nI Rasa Perfumes Team");
+        } catch (Exception e) {
+            log.error("Failed to send refund email for order {}: {}", order.getId(), e.getMessage());
+        }
+    }
+
+    private void sendExchangeRequestEmail(Order order, String reason) {
+        try {
+            String recipientEmail = order.getUser() != null ? order.getUser().getEmail()
+                    : (order.getBillingAddress() != null ? order.getBillingAddress().getEmail() : null);
+            String fullName = order.getUser() != null ? order.getUser().getFullName() : "Customer";
+            if (recipientEmail == null || recipientEmail.isEmpty()) return;
+
+            emailService.sendSimpleEmail(recipientEmail,
+                "Exchange Request Received — Order RASA-" + order.getId(),
+                "Dear " + fullName + ",\n\n" +
+                "We've received your exchange request for order RASA-" + order.getId() + ".\n" +
+                (reason != null && !reason.isBlank() ? "Reason: " + reason + "\n" : "") +
+                "\nOur team will get in touch with you within 24-48 hours to arrange the exchange.\n\n" +
+                "For queries, contact us at support@rasaperfumes.in\n\nWarm regards,\nI Rasa Perfumes Team");
+        } catch (Exception e) {
+            log.error("Failed to send exchange email for order {}: {}", order.getId(), e.getMessage());
+        }
     }
 }
