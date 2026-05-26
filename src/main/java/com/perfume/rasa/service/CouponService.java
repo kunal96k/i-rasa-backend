@@ -28,9 +28,7 @@ public class CouponService {
         welcomeCoupon.setDiscountPercentage(new java.math.BigDecimal("20.00"));
         welcomeCoupon.setMinCartValue(new java.math.BigDecimal("0.00"));
         welcomeCoupon.setActive(true);
-        if (welcomeCoupon.getExpiryDate() == null) {
-            welcomeCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
-        }
+        welcomeCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
         welcomeCoupon.setDescription("Get 20% discount on your first order");
         welcomeCoupon.setValidity("Valid for 10 years");
         welcomeCoupon.setDiscount("20% OFF");
@@ -41,9 +39,7 @@ public class CouponService {
         luxuryCoupon.setDiscountPercentage(new java.math.BigDecimal("10.00"));
         luxuryCoupon.setMinCartValue(new java.math.BigDecimal("1000.00"));
         luxuryCoupon.setActive(true);
-        if (luxuryCoupon.getExpiryDate() == null) {
-            luxuryCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
-        }
+        luxuryCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
         luxuryCoupon.setDescription("10% discount on luxury products above Rs. 1000");
         luxuryCoupon.setValidity("Valid for 10 years");
         luxuryCoupon.setDiscount("10% OFF");
@@ -54,9 +50,7 @@ public class CouponService {
         festiveCoupon.setDiscountPercentage(new java.math.BigDecimal("25.00"));
         festiveCoupon.setMinCartValue(new java.math.BigDecimal("2000.00"));
         festiveCoupon.setActive(true);
-        if (festiveCoupon.getExpiryDate() == null) {
-            festiveCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
-        }
+        festiveCoupon.setExpiryDate(LocalDateTime.now().plusYears(10));
         festiveCoupon.setDescription("25% discount on all festive purchases above Rs. 2000");
         festiveCoupon.setValidity("Valid for 10 years");
         festiveCoupon.setDiscount("25% OFF");
@@ -103,7 +97,7 @@ public class CouponService {
         if (coupon.getDiscountAmount() != null) {
             discount = coupon.getDiscountAmount();
         } else if (coupon.getDiscountPercentage() != null) {
-            discount = request.getCartTotal().multiply(coupon.getDiscountPercentage()).divide(new BigDecimal("100"));
+            discount = request.getCartTotal().multiply(coupon.getDiscountPercentage()).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
         }
 
         CouponValidateResponse response = new CouponValidateResponse();

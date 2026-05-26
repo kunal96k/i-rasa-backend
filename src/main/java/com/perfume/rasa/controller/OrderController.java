@@ -76,7 +76,7 @@ public class OrderController {
             if (authentication == null) {
                 return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
             }
-            
+
             java.time.LocalDateTime start = null;
             if (startDate != null && !startDate.trim().isEmpty()) {
                 start = java.time.LocalDate.parse(startDate).atStartOfDay();
@@ -88,18 +88,18 @@ public class OrderController {
 
             String uppercaseStatus = (status != null && !status.trim().isEmpty()) ? status.trim().toUpperCase() : null;
 
-            org.springframework.data.domain.Pageable pageable = 
-                    org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-            
-            org.springframework.data.domain.Page<OrderResponseDTO> ordersPage = 
-                    orderService.getFilteredOrdersForUser(authentication.getName(), uppercaseStatus, start, end, search, pageable);
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                            "createdAt"));
+
+            org.springframework.data.domain.Page<OrderResponseDTO> ordersPage = orderService
+                    .getFilteredOrdersForUser(authentication.getName(), uppercaseStatus, start, end, search, pageable);
 
             Map<String, Object> data = Map.of(
-                "orders", ordersPage.getContent(),
-                "currentPage", ordersPage.getNumber(),
-                "totalItems", ordersPage.getTotalElements(),
-                "totalPages", ordersPage.getTotalPages()
-            );
+                    "orders", ordersPage.getContent(),
+                    "currentPage", ordersPage.getNumber(),
+                    "totalItems", ordersPage.getTotalElements(),
+                    "totalPages", ordersPage.getTotalPages());
 
             return ResponseEntity.ok(new ApiResponse(true, "Orders retrieved successfully", data));
         } catch (Exception e) {
@@ -107,13 +107,13 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/{orderId}")
+    @GetMapping("/{orderId:[0-9]+}")
     public ResponseEntity<ApiResponse> getOrder(@PathVariable Long orderId, Authentication authentication) {
         try {
             // Simple approach: read token param from request
             String accessToken = null;
-            HttpServletRequest request = ((org.springframework.web.context.request.ServletRequestAttributes)
-                    org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+            HttpServletRequest request = ((org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder
+                    .currentRequestAttributes()).getRequest();
             if (request != null) {
                 accessToken = request.getParameter("token");
             }
@@ -152,7 +152,8 @@ public class OrderController {
             if (authentication == null) {
                 return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
             }
-            OrderResponseDTO response = orderService.updateOrderStatus(orderId, status.trim().toUpperCase(), authentication.getName());
+            OrderResponseDTO response = orderService.updateOrderStatus(orderId, status.trim().toUpperCase(),
+                    authentication.getName());
             return ResponseEntity.ok(new ApiResponse(true, "Order status updated successfully", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
@@ -177,7 +178,7 @@ public class OrderController {
             Path path = Paths.get(uploadDir, filename);
             Files.write(path, file.getBytes());
 
-            String fileUrl = "/upload/" + filename; // Adjust base URL logic if needed
+            String fileUrl = "/api/files/" + filename;
             return ResponseEntity.ok(new ApiResponse(true, "Payment proof uploaded", Map.of("url", fileUrl)));
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Upload failed: " + e.getMessage(), null));
@@ -199,7 +200,7 @@ public class OrderController {
             }
 
             Order order = orderOpt.get();
-            
+
             boolean authorized = false;
             // 1. Authorized if token matches
             if (token != null && token.equals(order.getAccessToken())) {
@@ -225,7 +226,7 @@ public class OrderController {
 
             Map<String, Object> invoiceSummary = invoiceService.getInvoiceSummary(order);
             log.info("Invoice data retrieved for order: {}", orderId);
-            
+
             return ResponseEntity.ok(new ApiResponse(true, "Invoice retrieved successfully", invoiceSummary));
         } catch (Exception e) {
             log.error("Error retrieving invoice for order: {}", orderId, e);
@@ -248,7 +249,7 @@ public class OrderController {
             }
 
             Order order = orderOpt.get();
-            
+
             boolean authorized = false;
             // 1. Authorized if token matches
             if (token != null && token.equals(order.getAccessToken())) {
@@ -273,11 +274,11 @@ public class OrderController {
             }
 
             ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(order);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", 
-                "invoice_" + order.getOrderId() + ".pdf");
+            headers.setContentDispositionFormData("attachment",
+                    "invoice_" + order.getOrderId() + ".pdf");
             headers.setContentLength(pdfStream.size());
 
             log.info("Invoice PDF downloaded for order: {}", orderId);
@@ -288,7 +289,7 @@ public class OrderController {
         } catch (Exception e) {
             log.error("Error generating PDF invoice for order: {}", orderId, e);
             return ResponseEntity.status(500).body(new ApiResponse(false,
-                "Failed to generate invoice PDF", null));
+                    "Failed to generate invoice PDF", null));
         }
     }
 

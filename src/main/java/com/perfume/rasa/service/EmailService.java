@@ -1,5 +1,8 @@
 package com.perfume.rasa.service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.mail.AuthenticationFailedException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,8 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-
-import jakarta.mail.internet.MimeMessage;
+import org.springframework.scheduling.annotation.Async;
 
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -102,8 +104,25 @@ public class EmailService {
             log.info("OTP email sent to {}", toEmail);
         } catch (Exception e) {
             log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
-            throw new RuntimeException("Failed to send verification code. Please try again.");
+            if (isAuthFailure(e)) {
+                throw new RuntimeException("SMTP authentication failed. Verify MAIL_USERNAME, MAIL_PASSWORD, and use a Gmail app password if required.", e);
+            }
+            throw new RuntimeException("Failed to send verification code. Please try again.", e);
         }
+    }
+
+    private boolean isAuthFailure(Throwable ex) {
+        while (ex != null) {
+            if (ex instanceof AuthenticationFailedException) {
+                return true;
+            }
+            String msg = ex.getMessage();
+            if (msg != null && msg.toLowerCase().contains("authentication failed")) {
+                return true;
+            }
+            ex = ex.getCause();
+        }
+        return false;
     }
 
     /**
@@ -152,7 +171,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Order received email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
-            log.error("Failed to send order received email for order #{}: {}", orderId, e.getMessage());
+            log.error("Failed to send order received email for order #{}", orderId, e);
         }
     }
 
@@ -202,7 +221,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Order confirmed email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
-            log.error("Failed to send order confirmed email for order #{}: {}", orderId, e.getMessage());
+            log.error("Failed to send order confirmed email for order #{}", orderId, e);
         }
     }
 

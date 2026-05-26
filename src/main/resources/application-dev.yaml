@@ -18,7 +18,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: ${MAIL_USERNAME:kunalpatil192001@gmail.com}
-    password: ${MAIL_PASSWORD:}
+    password: ${MAIL_PASSWORD:wqmx ebwk dhcf rdgd}
     properties:
       mail:
         smtp:
@@ -26,13 +26,16 @@ spring:
           starttls:
             enable: true
             required: true
+          ssl:
+            trust: smtp.gmail.com
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+        debug: true
     default-encoding: UTF-8
 
 email:
-  from: ${MAIL_FROM:kunalpatil192001@gmail.com}
+  from: ${MAIL_FROM:${MAIL_USERNAME:kunalpatil192001@gmail.com}}
   fromName: I Rasa Perfumes
   templates:
     enabled: true

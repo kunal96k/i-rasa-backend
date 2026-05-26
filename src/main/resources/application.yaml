@@ -44,9 +44,6 @@ app:
     vehicle-documents:
       max-file-size-bytes: 5242880
 
-  signup:
-    validation-code: ${SIGNUP_VALIDATION_CODE:REJOS2024CODE}
-
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:admin123}
