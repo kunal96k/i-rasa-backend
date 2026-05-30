@@ -258,7 +258,7 @@
 </head>
 
 <body>
-    <div class="invoice-container">
+    <div class="invoice-container" style="padding: 30px;">
         <!-- Header -->
         <table class="layout-table header-border">
             <tr>
@@ -307,10 +307,11 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 50%;">Product</th>
-                        <th style="width: 15%;" class="text-center">Qty</th>
-                        <th style="width: 17%;" class="text-right">Unit Price</th>
-                        <th style="width: 18%;" class="text-right">Total</th>
+                        <th style="width: 48%;">Product</th>
+                        <th style="width: 12%;" class="text-center">Qty</th>
+                        <th style="width: 15%;" class="text-right">Unit Price</th>
+                        <th style="width: 13%;" class="text-right">Bottle</th>
+                        <th style="width: 12%;" class="text-right">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -326,8 +327,15 @@
                         <td class="text-right">Rs. <span
                                 th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 2, 'POINT')}">299.00</span>
                         </td>
+                        <td class="text-right" th:if="${item.bottleType != null and item.bottleType != ''}">
+                            <small style="color: #888; font-size: 10px;" th:text="${item.bottleType}">Mini</small><br/>
+                            Rs. <span th:text="${#numbers.formatDecimal(item.bottlePrice, 0, 'COMMA', 2, 'POINT')}">99.00</span>
+                        </td>
+                        <td class="text-right" th:unless="${item.bottleType != null and item.bottleType != ''}">
+                            -
+                        </td>
                         <td class="text-right">Rs. <span
-                                th:text="${#numbers.formatDecimal(item.qty * item.price, 0, 'COMMA', 2, 'POINT')}">299.00</span>
+                                th:text="${#numbers.formatDecimal(item.qty * (item.price + (item.bottlePrice != null ? item.bottlePrice : 0)), 0, 'COMMA', 2, 'POINT')}">398.00</span>
                         </td>
                     </tr>
                 </tbody>
@@ -350,8 +358,8 @@
                 <tr>
                     <td>Shipping:</td>
                     <td class="amount" th:style="${shipping == 0 ? 'color: #4caf50; font-weight: bold;' : ''}"
-                        th:text="${shipping == 0 ? 'FREE' : 'Rs. ' + #numbers.formatDecimal(shipping, 0, 'COMMA', 2, 'POINT')}">
-                        FREE</td>
+                        th:text="${shipping == 0 ? 'FREE (Nashik Local)' : 'Rs. ' + #numbers.formatDecimal(shipping, 0, 'COMMA', 2, 'POINT')}">
+                        FREE (Nashik Local)</td>
                 </tr>
                 <tr th:if="${handlingCharge > 0}">
                     <td>Handling Charge:</td>
@@ -359,9 +367,14 @@
                             th:text="${#numbers.formatDecimal(handlingCharge, 0, 'COMMA', 2, 'POINT')}">7.00</span></td>
                 </tr>
                 <tr th:if="${platformFee > 0}">
-                    <td>Platform Fee:</td>
+                    <td>Packing Fees:</td>
                     <td class="amount">Rs. <span
-                            th:text="${#numbers.formatDecimal(platformFee, 0, 'COMMA', 2, 'POINT')}">5.00</span></td>
+                            th:text="${#numbers.formatDecimal(platformFee, 0, 'COMMA', 2, 'POINT')}">35.00</span></td>
+                </tr>
+                <tr th:if="${platformServicesFee > 0}">
+                    <td>Platform Services Fees:</td>
+                    <td class="amount">Rs. <span
+                            th:text="${#numbers.formatDecimal(platformServicesFee, 0, 'COMMA', 2, 'POINT')}">5.00</span></td>
                 </tr>
                 <tr class="total-row">
                     <td>TOTAL AMOUNT:</td>
@@ -400,8 +413,7 @@
                 For any queries or support, contact us at <a
                     href="mailto:support@rasaperfumes.in">support@rasaperfumes.in</a> or call <a
                     href="tel:+919823833303">+91 9823833303</a>.</p>
-            <p style="margin-top: 15px; color: #ccc;">I Rasa Perfumes · Panchavati, Padbandh Lane, Saraf Bazar,
-                Nashik-422001, Maharashtra · <a href="https://www.irasaperfumes.in">www.irasaperfumes.in</a></p>
+            <p style="margin-top: 15px; color: #ccc;">I Rasa Perfumes · Pagadbandh lane, Opposite Pagadi Ganesh Mandir, Saraf Bazar, Nashik-422001, Maharashtra · <a href="https://www.irasaperfumes.in">www.irasaperfumes.in</a></p>
         </div>
     </div>
 </body>

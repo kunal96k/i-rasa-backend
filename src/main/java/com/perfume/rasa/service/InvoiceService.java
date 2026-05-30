@@ -145,6 +145,7 @@ public class InvoiceService {
         context.setVariable("shipping", order.getShipping() != null ? order.getShipping() : BigDecimal.ZERO);
         context.setVariable("handlingCharge", order.getHandlingCharge() != null ? order.getHandlingCharge() : BigDecimal.ZERO);
         context.setVariable("platformFee", order.getPlatformFee() != null ? order.getPlatformFee() : BigDecimal.ZERO);
+        context.setVariable("platformServicesFee", order.getPlatformServicesFee() != null ? order.getPlatformServicesFee() : BigDecimal.ZERO);
         context.setVariable("total", order.getTotal());
         
         // Add payment info
@@ -219,6 +220,7 @@ public class InvoiceService {
         summary.put("shipping", order.getShipping() != null ? order.getShipping() : BigDecimal.ZERO);
         summary.put("handlingCharge", order.getHandlingCharge() != null ? order.getHandlingCharge() : BigDecimal.ZERO);
         summary.put("platformFee", order.getPlatformFee() != null ? order.getPlatformFee() : BigDecimal.ZERO);
+        summary.put("platformServicesFee", order.getPlatformServicesFee() != null ? order.getPlatformServicesFee() : BigDecimal.ZERO);
         summary.put("total", order.getTotal());
         summary.put("currencySymbol", "₹ ");
         summary.put("currencyLabel", "INR");
@@ -227,5 +229,29 @@ public class InvoiceService {
         summary.put("shippingAddress", formatAddress(order.getShippingAddress()));
         
         return summary;
+    }
+
+    /**
+     * Generate PDF for Usage & Care Guidelines
+     * @return ByteArrayOutputStream containing PDF data
+     */
+    public ByteArrayOutputStream generateGuidelinesPDF() {
+        Context context = new Context();
+        String htmlContent = templateEngine.process("email/guidelines", context);
+        
+        ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
+        try {
+            com.itextpdf.html2pdf.ConverterProperties props = new com.itextpdf.html2pdf.ConverterProperties();
+            com.itextpdf.layout.font.FontProvider fontProvider = new com.itextpdf.layout.font.FontProvider();
+            fontProvider.addStandardPdfFonts();
+            props.setFontProvider(fontProvider);
+            props.setBaseUri(".");
+            com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream, props);
+            log.info("Guidelines PDF generated successfully.");
+        } catch (Exception e) {
+            log.error("Failed to generate Guidelines PDF: {}", e.getMessage());
+            com.itextpdf.html2pdf.HtmlConverter.convertToPdf(htmlContent, pdfOutputStream);
+        }
+        return pdfOutputStream;
     }
 }

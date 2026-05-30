@@ -15,6 +15,7 @@ public class OrderResponseDTO {
     private BigDecimal shipping;
     private BigDecimal handlingCharge;
     private BigDecimal platformFee;
+    private BigDecimal platformServicesFee;
     private BigDecimal subtotal;
     private BigDecimal total;
     private LocalDate expectedDeliveryDate;
@@ -42,6 +43,8 @@ public class OrderResponseDTO {
     public void setHandlingCharge(BigDecimal handlingCharge) { this.handlingCharge = handlingCharge; }
     public BigDecimal getPlatformFee() { return platformFee; }
     public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
+    public BigDecimal getPlatformServicesFee() { return platformServicesFee; }
+    public void setPlatformServicesFee(BigDecimal platformServicesFee) { this.platformServicesFee = platformServicesFee; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getTotal() { return total; }

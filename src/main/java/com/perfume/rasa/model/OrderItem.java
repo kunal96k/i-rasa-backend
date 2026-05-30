@@ -20,6 +20,12 @@ public class OrderItem {
     
     private Integer qty;
     private String size;
+    
+    // Bottle selection fields
+    private String bottleType;
+    
+    @Column(precision = 10, scale = 2)
+    private BigDecimal bottlePrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
@@ -38,6 +44,10 @@ public class OrderItem {
     public void setQty(Integer qty) { this.qty = qty; }
     public String getSize() { return size; }
     public void setSize(String size) { this.size = size; }
+    public String getBottleType() { return bottleType; }
+    public void setBottleType(String bottleType) { this.bottleType = bottleType; }
+    public BigDecimal getBottlePrice() { return bottlePrice; }
+    public void setBottlePrice(BigDecimal bottlePrice) { this.bottlePrice = bottlePrice; }
     public Order getOrder() { return order; }
     public void setOrder(Order order) { this.order = order; }
 }

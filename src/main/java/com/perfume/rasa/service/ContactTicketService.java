@@ -19,6 +19,9 @@ import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Service for handling contact form submissions and ticket management
@@ -63,19 +66,26 @@ public class ContactTicketService {
      * Create and save a contact ticket, linking to user and order details
      */
     public String submitContactTicket(String name, String email, String subject, String message, String username, Long orderId) {
+        return submitContactTicket(name, email, null, subject, message, null, username, orderId);
+    }
+
+    /**
+     * Create and save a contact ticket with mobile number and image
+     */
+    public String submitContactTicket(String name, String email, String mobileNo, String subject, String message, String imageUrl, String username, Long orderId) {
         try {
             // Validate input
             if (name == null || name.trim().isEmpty() ||
                 email == null || email.trim().isEmpty() ||
                 subject == null || subject.trim().isEmpty() ||
                 message == null || message.trim().isEmpty()) {
-                log.warn("Invalid contact form submission with missing fields");
+                log.warn("Invalid contact form submission with missing required fields");
                 return null;
             }
 
-            // Email length validation
+            // Message length validation
             if (message.length() > 5000) {
-                log.warn("Contact message exceeds maximum length");
+                log.warn("Contact message exceeds maximum length of 5000 characters");
                 return null;
             }
 
@@ -85,8 +95,10 @@ public class ContactTicketService {
             ticket.setTicketId(ticketId);
             ticket.setName(name.trim());
             ticket.setEmail(email.trim());
+            ticket.setMobileNo(mobileNo != null ? mobileNo.trim() : null);
             ticket.setSubject(subject.trim());
             ticket.setMessage(message.trim());
+            ticket.setImageUrl(imageUrl);
             ticket.setOrderId(orderId);
 
             if (username != null) {
@@ -108,7 +120,7 @@ public class ContactTicketService {
             sendUserConfirmationEmail(name, email, subject, ticketId);
 
             // Send notification to admin
-            sendAdminNotificationEmail(name, email, subject, message, ticketId);
+            sendAdminNotificationEmail(name, email, mobileNo, subject, message, imageUrl, ticketId);
 
             log.info("Contact ticket {} submitted successfully from: {} ({})", ticketId, name, email);
             return ticketId;
@@ -129,6 +141,31 @@ public class ContactTicketService {
     }
 
     /**
+     * Get paginated tickets for a specific user
+     */
+    public Page<ContactTicket> getTicketsForUserPaginated(String username, int page, int size) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        Pageable pageable = PageRequest.of(page, size);
+        return contactTicketRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
+    }
+
+    /**
+     * Delete a ticket (Development mode mainly)
+     */
+    public boolean deleteTicket(String username, String ticketId) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        
+        Optional<ContactTicket> ticketOpt = contactTicketRepository.findByTicketId(ticketId);
+        if (ticketOpt.isPresent() && ticketOpt.get().getUser() != null && ticketOpt.get().getUser().getId().equals(user.getId())) {
+            contactTicketRepository.delete(ticketOpt.get());
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Send confirmation email to user
      */
     private void sendUserConfirmationEmail(String name, String email, String subject, String ticketId) {
@@ -142,7 +179,7 @@ public class ContactTicketService {
             context.setVariable("ticketId", ticketId);
             context.setVariable("submittedTime", LocalDateTime.now().toString());
 
-            String htmlContent = templateEngine.process("ticket-confirmation", context);
+            String htmlContent = templateEngine.process("email/ticket-confirmation", context);
 
             helper.setFrom(fromEmail);
             helper.setTo(email);
@@ -160,7 +197,7 @@ public class ContactTicketService {
     /**
      * Send notification email to admin
      */
-    private void sendAdminNotificationEmail(String name, String email, String subject, String message, String ticketId) {
+    private void sendAdminNotificationEmail(String name, String email, String mobileNo, String subject, String message, String imageUrl, String ticketId) {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -168,12 +205,14 @@ public class ContactTicketService {
             Context context = new Context();
             context.setVariable("name", name);
             context.setVariable("email", email);
+            context.setVariable("mobileNo", mobileNo != null ? mobileNo : "N/A");
             context.setVariable("subject", subject);
             context.setVariable("message", message);
             context.setVariable("submittedTime", LocalDateTime.now());
             context.setVariable("ticketId", ticketId);
+            context.setVariable("imageUrl", imageUrl);
 
-            String htmlContent = templateEngine.process("admin-ticket-notification", context);
+            String htmlContent = templateEngine.process("email/admin-ticket-notification", context);
 
             helper.setFrom(fromEmail);
             helper.setTo(adminEmail);
@@ -181,7 +220,7 @@ public class ContactTicketService {
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            log.info("Admin notification email sent for ticket from: {}", name);
+            log.info("Admin notification email sent for ticket from: {} ({})", name, mobileNo);
 
         } catch (MessagingException e) {
             log.error("Error sending admin notification email", e);

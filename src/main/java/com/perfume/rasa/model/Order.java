@@ -38,6 +38,7 @@ public class Order {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal platformFee = BigDecimal.ZERO;
+    private BigDecimal platformServicesFee = BigDecimal.ZERO;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
@@ -93,6 +94,8 @@ public class Order {
     public void setHandlingCharge(BigDecimal handlingCharge) { this.handlingCharge = handlingCharge; }
     public BigDecimal getPlatformFee() { return platformFee; }
     public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
+    public BigDecimal getPlatformServicesFee() { return platformServicesFee; }
+    public void setPlatformServicesFee(BigDecimal platformServicesFee) { this.platformServicesFee = platformServicesFee; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getTotal() { return total; }

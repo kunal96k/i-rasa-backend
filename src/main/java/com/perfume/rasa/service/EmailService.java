@@ -131,10 +131,11 @@ public class EmailService {
     public void sendOrderReceivedEmail(String toEmail, String fullName, Long orderId,
                                        java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
                                        java.math.BigDecimal subtotal, java.math.BigDecimal discount,
-                                       java.math.BigDecimal shipping, java.math.BigDecimal total,
+                                       java.math.BigDecimal shipping, java.math.BigDecimal handlingCharge, java.math.BigDecimal platformFee, java.math.BigDecimal platformServicesFee, java.math.BigDecimal total,
                                        String paymentMethod, String deliveryAddress, String city,
                                        java.time.LocalDate expectedDeliveryDate,
-                                       byte[] pdfBytes) {
+                                       byte[] pdfBytes,
+                                       byte[] guidelinesPdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -147,12 +148,15 @@ public class EmailService {
             ctx.setVariable("orderId", orderId);
             ctx.setVariable("subject", "Order Received — Payment Under Verification");
             ctx.setVariable("bodyIntro", "Thank you for your order! We've received it and your payment is under verification.");
-            ctx.setVariable("status", "Payment Pending");
+            ctx.setVariable("status", "Payment Verification Pending");
             ctx.setVariable("paymentMethod", paymentMethod);
             ctx.setVariable("items", items);
             ctx.setVariable("subtotal", subtotal);
             ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
             ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("handlingCharge", handlingCharge != null ? handlingCharge : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformFee", platformFee != null ? platformFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformServicesFee", platformServicesFee != null ? platformServicesFee : java.math.BigDecimal.ZERO);
             ctx.setVariable("total", total);
             ctx.setVariable("deliveryAddress", deliveryAddress);
             ctx.setVariable("city", city);
@@ -166,6 +170,9 @@ public class EmailService {
 
             if (pdfBytes != null && pdfBytes.length > 0) {
                 helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+            if (guidelinesPdfBytes != null && guidelinesPdfBytes.length > 0) {
+                helper.addAttachment("Usage_and_Care_Guidelines.pdf", new org.springframework.core.io.ByteArrayResource(guidelinesPdfBytes));
             }
 
             mailSender.send(message);
@@ -181,10 +188,11 @@ public class EmailService {
     public void sendOrderConfirmedEmail(String toEmail, String fullName, Long orderId,
                                         java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
                                         java.math.BigDecimal subtotal, java.math.BigDecimal discount,
-                                        java.math.BigDecimal shipping, java.math.BigDecimal total,
+                                        java.math.BigDecimal shipping, java.math.BigDecimal handlingCharge, java.math.BigDecimal platformFee, java.math.BigDecimal platformServicesFee, java.math.BigDecimal total,
                                         String paymentMethod, String deliveryAddress, String city,
                                         java.time.LocalDate expectedDeliveryDate,
-                                        byte[] pdfBytes) {
+                                        byte[] pdfBytes,
+                                        byte[] guidelinesPdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -203,6 +211,9 @@ public class EmailService {
             ctx.setVariable("subtotal", subtotal);
             ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
             ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("handlingCharge", handlingCharge != null ? handlingCharge : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformFee", platformFee != null ? platformFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformServicesFee", platformServicesFee != null ? platformServicesFee : java.math.BigDecimal.ZERO);
             ctx.setVariable("total", total);
             ctx.setVariable("deliveryAddress", deliveryAddress);
             ctx.setVariable("city", city);
@@ -217,6 +228,9 @@ public class EmailService {
             if (pdfBytes != null && pdfBytes.length > 0) {
                 helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
             }
+            if (guidelinesPdfBytes != null && guidelinesPdfBytes.length > 0) {
+                helper.addAttachment("Usage_and_Care_Guidelines.pdf", new org.springframework.core.io.ByteArrayResource(guidelinesPdfBytes));
+            }
 
             mailSender.send(message);
             log.info("Order confirmed email sent to {} for order #{}", toEmail, orderId);
@@ -228,10 +242,11 @@ public class EmailService {
     public void sendOrderDeliveredEmail(String toEmail, String fullName, Long orderId,
                                         java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
                                         java.math.BigDecimal subtotal, java.math.BigDecimal discount,
-                                        java.math.BigDecimal shipping, java.math.BigDecimal total,
+                                        java.math.BigDecimal shipping, java.math.BigDecimal handlingCharge, java.math.BigDecimal platformFee, java.math.BigDecimal platformServicesFee, java.math.BigDecimal total,
                                         String paymentMethod, String deliveryAddress, String city,
                                         java.time.LocalDate expectedDeliveryDate,
-                                        byte[] pdfBytes) {
+                                        byte[] pdfBytes,
+                                        byte[] guidelinesPdfBytes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -250,6 +265,9 @@ public class EmailService {
             ctx.setVariable("subtotal", subtotal);
             ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
             ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("handlingCharge", handlingCharge != null ? handlingCharge : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformFee", platformFee != null ? platformFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformServicesFee", platformServicesFee != null ? platformServicesFee : java.math.BigDecimal.ZERO);
             ctx.setVariable("total", total);
             ctx.setVariable("deliveryAddress", deliveryAddress);
             ctx.setVariable("city", city);
@@ -263,6 +281,9 @@ public class EmailService {
 
             if (pdfBytes != null && pdfBytes.length > 0) {
                 helper.addAttachment("invoice_INV-RASA-" + orderId + ".pdf", new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+            if (guidelinesPdfBytes != null && guidelinesPdfBytes.length > 0) {
+                helper.addAttachment("Usage_and_Care_Guidelines.pdf", new org.springframework.core.io.ByteArrayResource(guidelinesPdfBytes));
             }
 
             mailSender.send(message);

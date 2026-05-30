@@ -8,6 +8,8 @@ public class OrderItemRequestDTO {
     private BigDecimal price;
     private Integer qty;
     private String size;
+    private String bottleType;
+    private BigDecimal bottlePrice;
 
     public String getProductId() { return productId; }
     public void setProductId(String productId) { this.productId = productId; }
@@ -19,4 +21,8 @@ public class OrderItemRequestDTO {
     public void setQty(Integer qty) { this.qty = qty; }
     public String getSize() { return size; }
     public void setSize(String size) { this.size = size; }
+    public String getBottleType() { return bottleType; }
+    public void setBottleType(String bottleType) { this.bottleType = bottleType; }
+    public BigDecimal getBottlePrice() { return bottlePrice; }
+    public void setBottlePrice(BigDecimal bottlePrice) { this.bottlePrice = bottlePrice; }
 }

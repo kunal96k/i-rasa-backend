@@ -28,10 +28,17 @@ public class ContactTicket {
 
     private String name;
     private String email;
+    
+    @Column(length = 20)
+    private String mobileNo;
+    
     private String subject;
 
     @Column(length = 5000)
     private String message;
+    
+    @Column(length = 1000)
+    private String imageUrl;
 
     private String status = "OPEN"; // OPEN, IN_PROGRESS, RESOLVED
 
@@ -57,11 +64,17 @@ public class ContactTicket {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
+    public String getMobileNo() { return mobileNo; }
+    public void setMobileNo(String mobileNo) { this.mobileNo = mobileNo; }
+
     public String getSubject() { return subject; }
     public void setSubject(String subject) { this.subject = subject; }
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

@@ -15,6 +15,7 @@ public class OrderRequestDTO {
     private BigDecimal shipping;
     private BigDecimal handlingCharge;
     private BigDecimal platformFee;
+    private BigDecimal platformServicesFee;
     private BigDecimal total;
 
     public List<OrderItemRequestDTO> getItems() { return items; }
@@ -39,6 +40,8 @@ public class OrderRequestDTO {
     public void setHandlingCharge(BigDecimal handlingCharge) { this.handlingCharge = handlingCharge; }
     public BigDecimal getPlatformFee() { return platformFee; }
     public void setPlatformFee(BigDecimal platformFee) { this.platformFee = platformFee; }
+    public BigDecimal getPlatformServicesFee() { return platformServicesFee; }
+    public void setPlatformServicesFee(BigDecimal platformServicesFee) { this.platformServicesFee = platformServicesFee; }
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
 }

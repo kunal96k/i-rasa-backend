@@ -58,6 +58,7 @@ public class OrderService {
         order.setShipping(request.getShipping() != null ? request.getShipping() : BigDecimal.ZERO);
         order.setHandlingCharge(request.getHandlingCharge() != null ? request.getHandlingCharge() : BigDecimal.ZERO);
         order.setPlatformFee(request.getPlatformFee() != null ? request.getPlatformFee() : BigDecimal.ZERO);
+        order.setPlatformServicesFee(request.getPlatformServicesFee() != null ? request.getPlatformServicesFee() : BigDecimal.ZERO);
 
         // Map billing and shipping address
         if (request.getBilling() != null) {
@@ -120,9 +121,12 @@ public class OrderService {
                 item.setPrice(itemDTO.getPrice());
                 item.setQty(itemDTO.getQty());
                 item.setSize(itemDTO.getSize());
+                item.setBottleType(itemDTO.getBottleType());
+                item.setBottlePrice(itemDTO.getBottlePrice());
                 order.addItem(item);
 
-                BigDecimal itemTotal = itemDTO.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQty()));
+                BigDecimal bottleCost = itemDTO.getBottlePrice() != null ? itemDTO.getBottlePrice() : BigDecimal.ZERO;
+                BigDecimal itemTotal = itemDTO.getPrice().add(bottleCost).multiply(BigDecimal.valueOf(itemDTO.getQty()));
                 subtotal = subtotal.add(itemTotal);
             }
         }
@@ -136,7 +140,11 @@ public class OrderService {
                     .add(order.getPlatformFee());
         }
         order.setTotal(total);
-        order.setStatus("PENDING");
+        if ("COD".equalsIgnoreCase(request.getPaymentMethod())) {
+            order.setStatus("CONFIRMED");
+        } else {
+            order.setStatus("PENDING");
+        }
         order.setCreatedAt(LocalDateTime.now());
         
         // Expected delivery date based on shipping location
@@ -176,11 +184,15 @@ public class OrderService {
                     : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
 
             byte[] pdfBytes = null;
+            byte[] guidelinesPdfBytes = null;
             try {
                 java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(savedOrder);
                 pdfBytes = pdfStream.toByteArray();
+                
+                java.io.ByteArrayOutputStream guidelinesStream = invoiceService.generateGuidelinesPDF();
+                guidelinesPdfBytes = guidelinesStream.toByteArray();
             } catch (Exception e) {
-                log.error("Failed to generate PDF invoice for order placement email: {}", e.getMessage());
+                log.error("Failed to generate PDF invoice or guidelines for order placement email: {}", e.getMessage());
             }
 
             emailService.sendOrderReceivedEmail(
@@ -191,12 +203,16 @@ public class OrderService {
                     savedOrder.getSubtotal(),
                     savedOrder.getDiscount(),
                     savedOrder.getShipping(),
+                    savedOrder.getHandlingCharge(),
+                    savedOrder.getPlatformFee(),
+                    savedOrder.getPlatformServicesFee(),
                     savedOrder.getTotal(),
                     savedOrder.getPaymentMethod(),
                     deliveryAddressStr,
                     city,
                     savedOrder.getExpectedDeliveryDate(),
-                    pdfBytes
+                    pdfBytes,
+                    guidelinesPdfBytes
             );
         }
 
@@ -247,6 +263,7 @@ public class OrderService {
         dto.setShipping(order.getShipping());
         dto.setHandlingCharge(order.getHandlingCharge());
         dto.setPlatformFee(order.getPlatformFee());
+        dto.setPlatformServicesFee(order.getPlatformServicesFee());
         dto.setSubtotal(order.getSubtotal());
         dto.setTotal(order.getTotal());
         dto.setExpectedDeliveryDate(order.getExpectedDeliveryDate());
@@ -311,6 +328,8 @@ public class OrderService {
                 itemDTO.setPrice(item.getPrice());
                 itemDTO.setQty(item.getQty());
                 itemDTO.setSize(item.getSize());
+                itemDTO.setBottleType(item.getBottleType());
+                itemDTO.setBottlePrice(item.getBottlePrice());
                 itemDTOs.add(itemDTO);
             }
             dto.setItems(itemDTOs);
@@ -337,6 +356,21 @@ public class OrderService {
                 throw new RuntimeException("Unauthorized to update order status");
             }
         }
+
+        order.setStatus(status);
+        if (isFinalStatus(status)) {
+            removeTemporaryOrderAddresses(order);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        sendOrderStatusEmail(savedOrder);
+        return mapToResponseDTO(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponseDTO updateOrderStatusAdmin(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
         order.setStatus(status);
         if (isFinalStatus(status)) {
@@ -379,16 +413,22 @@ public class OrderService {
                 itemDTO.setPrice(item.getPrice());
                 itemDTO.setQty(item.getQty());
                 itemDTO.setSize(item.getSize());
+                itemDTO.setBottleType(item.getBottleType());
+                itemDTO.setBottlePrice(item.getBottlePrice());
                 itemDTOs.add(itemDTO);
             }
         }
 
         byte[] pdfBytes = null;
+        byte[] guidelinesPdfBytes = null;
         try {
             java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(order);
             pdfBytes = pdfStream.toByteArray();
+            
+            java.io.ByteArrayOutputStream guidelinesStream = invoiceService.generateGuidelinesPDF();
+            guidelinesPdfBytes = guidelinesStream.toByteArray();
         } catch (Exception e) {
-            log.error("Failed to generate PDF invoice for order status update email: {}", e.getMessage());
+            log.error("Failed to generate PDF invoice or guidelines for order status update email: {}", e.getMessage());
         }
 
         switch (order.getStatus() != null ? order.getStatus().toUpperCase() : "") {
@@ -401,12 +441,16 @@ public class OrderService {
                         order.getSubtotal(),
                         order.getDiscount(),
                         order.getShipping(),
+                        order.getHandlingCharge(),
+                        order.getPlatformFee(),
+                        order.getPlatformServicesFee(),
                         order.getTotal(),
                         order.getPaymentMethod(),
                         deliveryAddress,
                         city,
                         order.getExpectedDeliveryDate(),
-                        pdfBytes
+                        pdfBytes,
+                        guidelinesPdfBytes
                 );
                 break;
             case "DELIVERED":
@@ -418,12 +462,16 @@ public class OrderService {
                         order.getSubtotal(),
                         order.getDiscount(),
                         order.getShipping(),
+                        order.getHandlingCharge(),
+                        order.getPlatformFee(),
+                        order.getPlatformServicesFee(),
                         order.getTotal(),
                         order.getPaymentMethod(),
                         deliveryAddress,
                         city,
                         order.getExpectedDeliveryDate(),
-                        pdfBytes
+                        pdfBytes,
+                        guidelinesPdfBytes
                 );
                 break;
             default:
@@ -487,6 +535,25 @@ public class OrderService {
 
         Page<Order> ordersPage = orderRepository.findFilteredOrders(
                 user.getId(),
+                (status == null || status.trim().isEmpty()) ? null : status,
+                startDate,
+                endDate,
+                (search == null || search.trim().isEmpty()) ? null : search,
+                pageable
+        );
+
+        return ordersPage.map(this::mapToResponseDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrderResponseDTO> getAllOrdersForAdmin(
+            String status,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            String search,
+            Pageable pageable
+    ) {
+        Page<Order> ordersPage = orderRepository.findAllFilteredOrders(
                 (status == null || status.trim().isEmpty()) ? null : status,
                 startDate,
                 endDate,

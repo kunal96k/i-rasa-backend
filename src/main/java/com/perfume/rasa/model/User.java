@@ -40,7 +40,7 @@ public class User {
 
     public User() {}
 
-    public enum Role { CUSTOMER, ADMIN }
+    public enum Role { CUSTOMER, ADMIN, EMPLOYEE }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

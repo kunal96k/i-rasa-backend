@@ -31,4 +31,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("search") String search,
             Pageable pageable
     );
+
+    @Query("SELECT o FROM Order o WHERE " +
+           "(:status IS NULL OR :status = '' OR o.status = :status) " +
+           "AND (o.createdAt >= :startDate OR :startDate IS NULL) " +
+           "AND (o.createdAt <= :endDate OR :endDate IS NULL) " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "     CAST(o.id as string) LIKE CONCAT('%', :search, '%') OR " +
+           "     LOWER(o.billingAddress.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "     EXISTS (SELECT i FROM o.items i WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%'))))")
+    Page<Order> findAllFilteredOrders(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            Pageable pageable
+    );
 }
