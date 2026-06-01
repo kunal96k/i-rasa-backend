@@ -1,7 +1,7 @@
 spring:
   web:
     resources:
-      static-locations: file:C:/Users/TechnoKraft/Desktop/i-rasa/i-rasa/
+      static-locations: ${SPRING_WEB_RESOURCES_STATIC_LOCATIONS:file:C:/Users/TechnoKraft/Desktop/i-rasa/i-rasa/}
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   session:
@@ -43,7 +43,7 @@ app:
     allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}
 
   upload:
-    storage-dir: upload
+    storage-dir: ${APP_UPLOAD_STORAGE_DIR:upload}
     vehicle-documents:
       max-file-size-bytes: 5242880
 

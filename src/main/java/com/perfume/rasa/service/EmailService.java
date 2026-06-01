@@ -27,7 +27,7 @@ public class EmailService {
         this.templateEngine = templateEngine;
     }
 
-    @Value("${spring.mail.username:no-reply@rasaperfumes.in}")
+    @Value("${spring.mail.username:irasaperfumes@gmail.com}")
     private String fromEmail;
 
     @Value("${email.fromName:I Rasa Perfumes}")

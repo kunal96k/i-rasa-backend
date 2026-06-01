@@ -103,7 +103,7 @@ public class InvoiceService {
         context.setVariable("currencySymbol", "Rs. ");
         context.setVariable("currencyCode", "INR");
         context.setVariable("currencyLabel", "INR");
-        context.setVariable("companyEmail", "support@rasaperfumes.in");
+        context.setVariable("companyEmail", "irasaperfumes@gmail.com");
         context.setVariable("companyWebsite", "www.irasaperfumes.in");
         
         // Add user/guest info

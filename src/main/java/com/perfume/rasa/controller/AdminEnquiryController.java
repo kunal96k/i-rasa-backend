@@ -15,6 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +33,9 @@ public class AdminEnquiryController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Value("${app.upload.storage-dir:upload}")
+    private String uploadDir;
 
     private boolean isAdminOrEmployee(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) return false;
@@ -91,8 +97,28 @@ public class AdminEnquiryController {
                 return ResponseEntity.badRequest().body(new ApiResponse(false, "Name, Email, Subject, and Message are required", null));
             }
 
+            if (enquiry.getSubject().trim().length() > 100 || enquiry.getMessage().trim().length() > 1000) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "Subject (max 100) or Message (max 1000) exceeds character limits", null));
+            }
+
+            if (!isSafeInput(enquiry.getName()) || !isSafeInput(enquiry.getEmail()) || !isSafeInput(enquiry.getSubject()) || !isSafeInput(enquiry.getMessage())) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "Input contains unsafe scripting or HTML tags", null));
+            }
+
+            enquiry.setName(org.springframework.web.util.HtmlUtils.htmlEscape(enquiry.getName().trim()));
+            enquiry.setEmail(org.springframework.web.util.HtmlUtils.htmlEscape(enquiry.getEmail().trim()));
+            enquiry.setSubject(org.springframework.web.util.HtmlUtils.htmlEscape(enquiry.getSubject().trim()));
+            enquiry.setMessage(org.springframework.web.util.HtmlUtils.htmlEscape(enquiry.getMessage().trim()));
+            if (enquiry.getMobileNo() != null) {
+                enquiry.setMobileNo(org.springframework.web.util.HtmlUtils.htmlEscape(enquiry.getMobileNo().trim()));
+            }
+
             enquiry.setEnquiryId("ENQ" + System.currentTimeMillis());
-            enquiry.setStatus("OPEN");
+            if (enquiry.getStatus() == null || enquiry.getStatus().trim().isEmpty()) {
+                enquiry.setStatus("OPEN");
+            } else {
+                enquiry.setStatus(enquiry.getStatus().trim().toUpperCase());
+            }
             enquiry.setSource("ADMIN_MANUAL");
             
             enquiryRepository.save(enquiry);
@@ -103,6 +129,31 @@ public class AdminEnquiryController {
             log.error("Error creating manual enquiry", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse(false, "Internal Server Error", null));
+        }
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadEnquiryFile(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "File is empty", null));
+            }
+
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String filename = java.util.UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            java.nio.file.Path path = java.nio.file.Paths.get(uploadDir, filename);
+            java.nio.file.Files.write(path, file.getBytes());
+
+            String fileUrl = "/api/files/" + filename;
+            return ResponseEntity.ok(new ApiResponse(true, "File uploaded successfully", Map.of("url", fileUrl)));
+        } catch (Exception e) {
+            log.error("File upload failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Upload failed: " + e.getMessage(), null));
         }
     }
 
@@ -160,12 +211,30 @@ public class AdminEnquiryController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Enquiry not found", null));
             }
 
-            if (updatedEnquiry.getName() != null) enquiry.setName(updatedEnquiry.getName());
-            if (updatedEnquiry.getEmail() != null) enquiry.setEmail(updatedEnquiry.getEmail());
-            if (updatedEnquiry.getMobileNo() != null) enquiry.setMobileNo(updatedEnquiry.getMobileNo());
-            if (updatedEnquiry.getSubject() != null) enquiry.setSubject(updatedEnquiry.getSubject());
-            if (updatedEnquiry.getMessage() != null) enquiry.setMessage(updatedEnquiry.getMessage());
+            if (updatedEnquiry.getName() != null) {
+                if (!isSafeInput(updatedEnquiry.getName())) return ResponseEntity.badRequest().body(new ApiResponse(false, "Unsafe input detected in Name", null));
+                enquiry.setName(org.springframework.web.util.HtmlUtils.htmlEscape(updatedEnquiry.getName().trim()));
+            }
+            if (updatedEnquiry.getEmail() != null) {
+                if (!isSafeInput(updatedEnquiry.getEmail())) return ResponseEntity.badRequest().body(new ApiResponse(false, "Unsafe input detected in Email", null));
+                enquiry.setEmail(org.springframework.web.util.HtmlUtils.htmlEscape(updatedEnquiry.getEmail().trim()));
+            }
+            if (updatedEnquiry.getMobileNo() != null) {
+                if (!isSafeInput(updatedEnquiry.getMobileNo())) return ResponseEntity.badRequest().body(new ApiResponse(false, "Unsafe input detected in Mobile", null));
+                enquiry.setMobileNo(org.springframework.web.util.HtmlUtils.htmlEscape(updatedEnquiry.getMobileNo().trim()));
+            }
+            if (updatedEnquiry.getSubject() != null) {
+                if (updatedEnquiry.getSubject().trim().length() > 100) return ResponseEntity.badRequest().body(new ApiResponse(false, "Subject must not exceed 100 characters", null));
+                if (!isSafeInput(updatedEnquiry.getSubject())) return ResponseEntity.badRequest().body(new ApiResponse(false, "Unsafe input detected in Subject", null));
+                enquiry.setSubject(org.springframework.web.util.HtmlUtils.htmlEscape(updatedEnquiry.getSubject().trim()));
+            }
+            if (updatedEnquiry.getMessage() != null) {
+                if (updatedEnquiry.getMessage().trim().length() > 1000) return ResponseEntity.badRequest().body(new ApiResponse(false, "Message must not exceed 1000 characters", null));
+                if (!isSafeInput(updatedEnquiry.getMessage())) return ResponseEntity.badRequest().body(new ApiResponse(false, "Unsafe input detected in Message", null));
+                enquiry.setMessage(org.springframework.web.util.HtmlUtils.htmlEscape(updatedEnquiry.getMessage().trim()));
+            }
             if (updatedEnquiry.getStatus() != null) enquiry.setStatus(updatedEnquiry.getStatus().toUpperCase());
+            if (updatedEnquiry.getImageUrl() != null) enquiry.setImageUrl(updatedEnquiry.getImageUrl());
             enquiry.setUpdatedAt(java.time.LocalDateTime.now());
 
             enquiryRepository.save(enquiry);
@@ -204,5 +273,13 @@ public class AdminEnquiryController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse(false, "Internal Server Error", null));
         }
+    }
+
+    private boolean isSafeInput(String value) {
+        if (value == null) return true;
+        String val = value.trim();
+        if (val.contains("<") || val.contains(">")) return false;
+        if (val.toLowerCase().contains("javascript:") || val.toLowerCase().matches("(?i).*on\\w+\\s*=.*")) return false;
+        return true;
     }
 }

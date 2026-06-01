@@ -1,0 +1,105 @@
+BEGIN:VCALENDAR
+METHOD:REQUEST
+PRODID:Microsoft Exchange Server 2010
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:India Standard Time
+BEGIN:STANDARD
+DTSTART:16010101T000000
+TZOFFSETFROM:+0530
+TZOFFSETTO:+0530
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:16010101T000000
+TZOFFSETFROM:+0530
+TZOFFSETTO:+0530
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+ORGANIZER;CN=Eliza Dewar:mailto:eliza.dewar@livlong.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=Deepika .:
+ mailto:deepika@livlong.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=billaraval
+ i99@gmail.com:mailto:billaravali99@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=syyed.aami
+ rhashmi@gmail.com:mailto:syyed.aamirhashmi@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=arifshaikh
+ 65320@gmail.com:mailto:arifshaikh65320@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=RichaTripa
+ thi854500@gmail.com:mailto:RichaTripathi854500@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=pravin.jad
+ havap@gmail.com:mailto:pravin.jadhavap@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=sarahbabu1
+ 27@gmail.com:mailto:sarahbabu127@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=shaileshth
+ akor886684@gmail.com:mailto:shaileshthakor886684@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=kiransaheb
+ 24@gmail.com:mailto:kiransaheb24@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=chennaboin
+ amanasa786@gmail.com:mailto:chennaboinamanasa786@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=sidpendhar
+ kar610@gmail.com:mailto:sidpendharkar610@gmail.com
+DESCRIPTION;LANGUAGE=en-US:\n______________________________________________
+ __________________________________\nMicrosoft Teams meeting\nJoin: https:/
+ /teams.microsoft.com/meet/41068123118422?p=fM3XWUIY9qhZ8ebSyR\nMeeting ID:
+  410 681 231 184 22\nPasscode: ac699oh7\n________________________________\
+ nNeed help?<https://aka.ms/JoinTeamsMeeting?omkt=en-US> | System reference
+ <https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZGZmMjM3MjItYWQ1ZS
+ 00MDg3LWE4MDYtYTM5ZmFlYjMwNTIw%40thread.v2/0?context=%7b%22Tid%22%3a%223db
+ 62312-9881-4199-9ef7-4423e71a6037%22%2c%22Oid%22%3a%222bcd4c7f-5412-4250-8
+ 70f-0c0086835b5a%22%7d>\nFor organizers: Meeting options<https://teams.mic
+ rosoft.com/meetingOptions/?organizerId=2bcd4c7f-5412-4250-870f-0c0086835b5
+ a&tenantId=3db62312-9881-4199-9ef7-4423e71a6037&threadId=19_meeting_ZGZmMj
+ M3MjItYWQ1ZS00MDg3LWE4MDYtYTM5ZmFlYjMwNTIw@thread.v2&messageId=0&language=
+ en-US>\n__________________________________________________________________
+ ______________\n
+UID:040000008200E00074C5B7101A82E00800000000B82DE54FBBDEDC01000000000000000
+ 01000000009DA6F4B13B2BB4CA2E2042DA6637DA4
+RECURRENCE-ID;TZID=India Standard Time:20260522T160000
+SUMMARY;LANGUAGE=en-US:Livlong Welcome Connect 
+DTSTART;TZID=India Standard Time:20260522T160000
+DTEND;TZID=India Standard Time:20260522T170000
+CLASS:PUBLIC
+PRIORITY:5
+DTSTAMP:20260521T082407Z
+TRANSP:OPAQUE
+STATUS:CONFIRMED
+SEQUENCE:5
+LOCATION;LANGUAGE=en-US:Microsoft Teams Meeting
+X-MICROSOFT-CDO-APPT-SEQUENCE:5
+X-MICROSOFT-CDO-OWNERAPPTID:2124759736
+X-MICROSOFT-CDO-BUSYSTATUS:TENTATIVE
+X-MICROSOFT-CDO-INTENDEDSTATUS:BUSY
+X-MICROSOFT-CDO-ALLDAYEVENT:FALSE
+X-MICROSOFT-CDO-IMPORTANCE:1
+X-MICROSOFT-CDO-INSTTYPE:3
+X-MICROSOFT-ONLINEMEETINGINFORMATION:{"OnlineMeetingChannelId":null\,"Onlin
+ eMeetingProvider":3}
+X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.microsoft.com/l/meetup-join/
+ 19%3ameeting_ZGZmMjM3MjItYWQ1ZS00MDg3LWE4MDYtYTM5ZmFlYjMwNTIw%40thread.v2/
+ 0?context=%7b%22Tid%22%3a%223db62312-9881-4199-9ef7-4423e71a6037%22%2c%22O
+ id%22%3a%222bcd4c7f-5412-4250-870f-0c0086835b5a%22%7d
+X-MICROSOFT-SCHEDULINGSERVICEUPDATEURL:https://api.scheduler.teams.microsof
+ t.com/teams/3db62312-9881-4199-9ef7-4423e71a6037/2bcd4c7f-5412-4250-870f-0
+ c0086835b5a/19_meeting_ZGZmMjM3MjItYWQ1ZS00MDg3LWE4MDYtYTM5ZmFlYjMwNTIw@th
+ read.v2/0
+X-MICROSOFT-SKYPETEAMSPROPERTIES:{"cid":"19:meeting_ZGZmMjM3MjItYWQ1ZS00MDg
+ 3LWE4MDYtYTM5ZmFlYjMwNTIw@thread.v2"\,"rid":0\,"mid":0\,"uid":null\,"priva
+ te":true\,"type":0}
+X-MICROSOFT-DONOTFORWARDMEETING:FALSE
+X-MICROSOFT-DISALLOW-COUNTER:FALSE
+X-MICROSOFT-REQUESTEDATTENDANCEMODE:DEFAULT
+X-MICROSOFT-ISRESPONSEREQUESTED:TRUE
+X-MICROSOFT-LOCATIONDISPLAYNAME:Microsoft Teams Meeting
+X-MICROSOFT-LOCATIONSOURCE:None
+X-MICROSOFT-LOCATIONS:[{"DisplayName":"Microsoft Teams Meeting"\,"LocationA
+ nnotation":""\,"LocationUri":""\,"LocationStreet":""\,"LocationCity":""\,"
+ LocationState":""\,"LocationCountry":""\,"LocationPostalCode":""\,"Locatio
+ nFullAddress":""}]
+BEGIN:VALARM
+DESCRIPTION:REMINDER
+TRIGGER;RELATED=START:-PT15M
+ACTION:DISPLAY
+END:VALARM
+END:VEVENT
+END:VCALENDAR

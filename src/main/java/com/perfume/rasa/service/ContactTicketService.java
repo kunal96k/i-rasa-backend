@@ -43,10 +43,10 @@ public class ContactTicketService {
     @Autowired
     private UserRepository userRepository;
 
-    @Value("${spring.mail.username:no-reply@rasaperfumes.in}")
+    @Value("${spring.mail.username:irasaperfumes@gmail.com}")
     private String fromEmail;
 
-    @Value("${admin.email:admin@rasaperfumes.in}")
+    @Value("${admin.email:irasaperfumes@gmail.com}")
     private String adminEmail;
 
     /**

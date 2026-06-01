@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Production Configuration with credentials
+src/main/resources/application-prod.yaml

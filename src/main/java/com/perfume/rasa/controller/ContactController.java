@@ -77,15 +77,32 @@ public class ContactController {
                     false, "All fields are required", null));
             }
 
+            if (subject.trim().length() > 100 || message.trim().length() > 1000) {
+                return ResponseEntity.badRequest().body(new ApiResponse(
+                    false, "Subject (max 100) or Message (max 1000) exceeds character limits", null));
+            }
+
+            if (!isSafeInput(name) || !isSafeInput(email) || !isSafeInput(subject) || !isSafeInput(message) || !isSafeInput(mobileNo)) {
+                return ResponseEntity.badRequest().body(new ApiResponse(
+                    false, "Input contains unsafe scripting or HTML tags", null));
+            }
+
+            // HTML-escape inputs to prevent stored XSS
+            String safeName = org.springframework.web.util.HtmlUtils.htmlEscape(name.trim());
+            String safeEmail = org.springframework.web.util.HtmlUtils.htmlEscape(email.trim());
+            String safeSubject = org.springframework.web.util.HtmlUtils.htmlEscape(subject.trim());
+            String safeMessage = org.springframework.web.util.HtmlUtils.htmlEscape(message.trim());
+            String safeMobileNo = mobileNo != null ? org.springframework.web.util.HtmlUtils.htmlEscape(mobileNo.trim()) : null;
+
             // Validate email format
-            if (!isValidEmail(email)) {
+            if (!isValidEmail(safeEmail)) {
                 return ResponseEntity.badRequest().body(new ApiResponse(
                     false, "Invalid email format", null));
             }
 
             // Submit ticket via service
             String ticketId = contactTicketService.submitContactTicket(
-                    name, email, subject, message, username, orderId);
+                    safeName, safeEmail, safeMobileNo, safeSubject, safeMessage, null, username, orderId);
 
             if (ticketId != null) {
                 Map<String, Object> response = new HashMap<>();
@@ -126,13 +143,23 @@ public class ContactController {
                     false, "Name, Email, Subject, and Message are required", null));
             }
 
+            if (subject.trim().length() > 100 || message.trim().length() > 1000) {
+                return ResponseEntity.badRequest().body(new ApiResponse(
+                    false, "Subject (max 100) or Message (max 1000) exceeds character limits", null));
+            }
+
+            if (!isSafeInput(name) || !isSafeInput(email) || !isSafeInput(subject) || !isSafeInput(message) || !isSafeInput(mobileNo)) {
+                return ResponseEntity.badRequest().body(new ApiResponse(
+                    false, "Input contains unsafe scripting or HTML tags", null));
+            }
+
             Enquiry enquiry = new Enquiry();
             enquiry.setEnquiryId("ENQ" + System.currentTimeMillis());
-            enquiry.setName(name.trim());
-            enquiry.setEmail(email.trim());
-            enquiry.setMobileNo(mobileNo);
-            enquiry.setSubject(subject.trim());
-            enquiry.setMessage(message.trim());
+            enquiry.setName(org.springframework.web.util.HtmlUtils.htmlEscape(name.trim()));
+            enquiry.setEmail(org.springframework.web.util.HtmlUtils.htmlEscape(email.trim()));
+            enquiry.setMobileNo(mobileNo != null ? org.springframework.web.util.HtmlUtils.htmlEscape(mobileNo.trim()) : null);
+            enquiry.setSubject(org.springframework.web.util.HtmlUtils.htmlEscape(subject.trim()));
+            enquiry.setMessage(org.springframework.web.util.HtmlUtils.htmlEscape(message.trim()));
             enquiry.setStatus("OPEN");
             enquiry.setSource("WEBSITE");
 
@@ -209,5 +236,13 @@ public class ContactController {
 
     private boolean isValidEmail(String email) {
         return email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+    }
+
+    private boolean isSafeInput(String value) {
+        if (value == null) return true;
+        String val = value.trim();
+        if (val.contains("<") || val.contains(">")) return false;
+        if (val.toLowerCase().contains("javascript:") || val.toLowerCase().matches("(?i).*on\\w+\\s*=.*")) return false;
+        return true;
     }
 }

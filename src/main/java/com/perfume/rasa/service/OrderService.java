@@ -684,7 +684,7 @@ public class OrderService {
                 "We've received your refund request for order RASA-" + order.getId() + ".\n" +
                 (reason != null && !reason.isBlank() ? "Reason: " + reason + "\n" : "") +
                 "\nOur team will review your request and process the refund within 5-7 business days.\n\n" +
-                "For queries, contact us at support@rasaperfumes.in\n\nWarm regards,\nI Rasa Perfumes Team");
+                "For queries, contact us at irasaperfumes@gmail.com\n\nWarm regards,\nI Rasa Perfumes Team");
         } catch (Exception e) {
             log.error("Failed to send refund email for order {}: {}", order.getId(), e.getMessage());
         }
@@ -703,7 +703,7 @@ public class OrderService {
                 "We've received your exchange request for order RASA-" + order.getId() + ".\n" +
                 (reason != null && !reason.isBlank() ? "Reason: " + reason + "\n" : "") +
                 "\nOur team will get in touch with you within 24-48 hours to arrange the exchange.\n\n" +
-                "For queries, contact us at support@rasaperfumes.in\n\nWarm regards,\nI Rasa Perfumes Team");
+                "For queries, contact us at irasaperfumes@gmail.com\n\nWarm regards,\nI Rasa Perfumes Team");
         } catch (Exception e) {
             log.error("Failed to send exchange email for order {}: {}", order.getId(), e.getMessage());
         }
