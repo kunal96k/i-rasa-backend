@@ -2,6 +2,7 @@ package com.perfume.rasa.repository;
 
 import com.perfume.rasa.model.ContactTicket;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import org.springframework.data.domain.Page;
@@ -10,10 +11,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ContactTicketRepository extends JpaRepository<ContactTicket, Long> {
+public interface ContactTicketRepository extends JpaRepository<ContactTicket, Long>, JpaSpecificationExecutor<ContactTicket> {
     List<ContactTicket> findByUserIdOrderByCreatedAtDesc(Long userId);
     Page<ContactTicket> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     Page<ContactTicket> findAllByOrderByCreatedAtDesc(Pageable pageable);
     Page<ContactTicket> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
     Optional<ContactTicket> findByTicketId(String ticketId);
+    long countByStatus(String status);
 }

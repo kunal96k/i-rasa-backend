@@ -53,10 +53,9 @@ public class AdminOrderController {
             @RequestParam(required = false) String search,
             Authentication authentication) {
         
-        // Re-enabled auth check
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             LocalDateTime start = null;
@@ -96,10 +95,9 @@ public class AdminOrderController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
             
-        // Re-enabled auth check
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             String newStatus = body.get("status");
