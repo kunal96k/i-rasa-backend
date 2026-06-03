@@ -50,4 +50,21 @@ public class UserProfileController {
             return ResponseEntity.status(500).body(new ApiResponse(false, "Failed to upload avatar: " + e.getMessage(), null));
         }
     }
+
+    @PostMapping("/me/change-password")
+    public ResponseEntity<ApiResponse> changePassword(Authentication auth, @RequestBody java.util.Map<String, String> body) {
+        if (auth == null) {
+            return ResponseEntity.status(401).body(new ApiResponse(false, "Unauthorized", null));
+        }
+        try {
+            String currentPassword = body.get("currentPassword");
+            String newPassword = body.get("newPassword");
+            userProfileService.changePassword(auth.getName(), currentPassword, newPassword);
+            return ResponseEntity.ok(new ApiResponse(true, "Password updated successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ApiResponse(false, "Failed to update password: " + e.getMessage()));
+        }
+    }
 }

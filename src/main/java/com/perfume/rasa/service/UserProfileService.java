@@ -25,10 +25,17 @@ public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final UserRepository userRepository;
+    private final com.perfume.rasa.repository.EmployeeRepository employeeRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    public UserProfileService(UserProfileRepository userProfileRepository, UserRepository userRepository) {
+    public UserProfileService(UserProfileRepository userProfileRepository, 
+                              UserRepository userRepository,
+                              com.perfume.rasa.repository.EmployeeRepository employeeRepository,
+                              org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
+        this.employeeRepository = employeeRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Value("${app.upload.storage-dir:upload}")
@@ -102,6 +109,8 @@ public class UserProfileService {
         UserProfileDTO dto = new UserProfileDTO();
         dto.setFullName(user.getFullName());
         dto.setEmail(user.getEmail());
+        dto.setRole(user.getRole().name());
+        
         if (profile != null) {
             dto.setPhoneNumber(profile.getPhoneNumber());
             dto.setBirthDate(profile.getBirthDate());
@@ -109,6 +118,41 @@ public class UserProfileService {
             dto.setEmailNotificationsEnabled(profile.getEmailNotificationsEnabled());
             dto.setSmsAlertsEnabled(profile.getSmsAlertsEnabled());
         }
+
+        if (user.getRole() != User.Role.CUSTOMER) {
+            employeeRepository.findByUserId(user.getId()).ifPresent(emp -> {
+                com.perfume.rasa.dto.EmployeeResponseDTO empDto = new com.perfume.rasa.dto.EmployeeResponseDTO();
+                empDto.setId(emp.getId());
+                empDto.setEmployeeId(emp.getEmployeeId());
+                empDto.setDepartment(emp.getDepartment());
+                empDto.setDesignation(emp.getDesignation());
+                empDto.setSalary(emp.getSalary());
+                empDto.setDateOfJoining(emp.getDateOfJoining());
+                empDto.setUserId(user.getId());
+                empDto.setFullName(user.getFullName());
+                empDto.setEmail(user.getEmail());
+                empDto.setPhone(user.getPhone());
+                empDto.setRole(user.getRole());
+                dto.setEmployeeDetails(empDto);
+            });
+        }
+        
         return dto;
+    }
+
+    @Transactional
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        if (newPassword == null || newPassword.trim().length() < 8) {
+            throw new IllegalArgumentException("New password must be at least 8 characters long.");
+        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Incorrect current password.");
+        }
+        
+        user.setPassword(passwordEncoder.encode(newPassword.trim()));
+        userRepository.save(user);
     }
 }

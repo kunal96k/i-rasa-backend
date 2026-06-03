@@ -10,6 +10,13 @@ public class UserProfileDTO {
     private String profileImageUrl;
     private Boolean emailNotificationsEnabled;
     private Boolean smsAlertsEnabled;
+    private String role;
+    private EmployeeResponseDTO employeeDetails;
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public EmployeeResponseDTO getEmployeeDetails() { return employeeDetails; }
+    public void setEmployeeDetails(EmployeeResponseDTO employeeDetails) { this.employeeDetails = employeeDetails; }
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }

@@ -42,7 +42,11 @@ public class AdminTicketController {
     private boolean isAdminOrEmployee(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return false;
         Optional<User> userOpt = userRepository.findByEmail(auth.getName());
-        return userOpt.isPresent() && (userOpt.get().getRole() == User.Role.ADMIN || userOpt.get().getRole() == User.Role.EMPLOYEE);
+        return userOpt.isPresent() && (
+            userOpt.get().getRole() == User.Role.ADMIN || 
+            userOpt.get().getRole() == User.Role.EMPLOYEE || 
+            userOpt.get().getRole() == User.Role.SUPERADMIN
+        );
     }
 
     @GetMapping

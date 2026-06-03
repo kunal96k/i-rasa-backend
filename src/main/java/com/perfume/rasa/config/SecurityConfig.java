@@ -61,6 +61,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .requestCache(cache -> cache.requestCache(requestCache))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/admin-employees.html", "/api/admin/employees/**").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers("/admin.html", "/admin-*.html", "/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE")
                         .requestMatchers(
                                 "/", "/login", "/register", "/api/auth/**",
                                 "/css/**", "/js/**", "/images/**", "/img/**",

@@ -38,7 +38,7 @@ public class AdminOrderController {
         Optional<User> userOpt = userRepository.findByEmail(authentication.getName());
         if (userOpt.isPresent()) {
             User.Role role = userOpt.get().getRole();
-            return role == User.Role.ADMIN || role == User.Role.EMPLOYEE;
+            return role == User.Role.ADMIN || role == User.Role.EMPLOYEE || role == User.Role.SUPERADMIN;
         }
         return false;
     }

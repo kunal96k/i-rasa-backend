@@ -24,6 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.perfume.rasa.model.OrderStatusHistory;
+import com.perfume.rasa.repository.OrderStatusHistoryRepository;
+import com.perfume.rasa.dto.OrderStatusHistoryDTO;
+
 @Service
 public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
@@ -32,12 +36,14 @@ public class OrderService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final InvoiceService invoiceService;
+    private final OrderStatusHistoryRepository statusHistoryRepository;
 
-    public OrderService(OrderRepository orderRepository, UserRepository userRepository, EmailService emailService, InvoiceService invoiceService) {
+    public OrderService(OrderRepository orderRepository, UserRepository userRepository, EmailService emailService, InvoiceService invoiceService, OrderStatusHistoryRepository statusHistoryRepository) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
         this.invoiceService = invoiceService;
+        this.statusHistoryRepository = statusHistoryRepository;
     }
 
     @Transactional
@@ -147,6 +153,12 @@ public class OrderService {
         }
         order.setCreatedAt(LocalDateTime.now());
         
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setStatus(order.getStatus());
+        history.setTimestamp(LocalDateTime.now());
+        history.setNotes("Order placed");
+        order.addStatusHistory(history);
+        
         // Expected delivery date based on shipping location
         String shippingCity = order.getShippingAddress() != null ? order.getShippingAddress().getCity()
                 : order.getBillingAddress() != null ? order.getBillingAddress().getCity() : "";
@@ -188,11 +200,8 @@ public class OrderService {
             try {
                 java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(savedOrder);
                 pdfBytes = pdfStream.toByteArray();
-                
-                java.io.ByteArrayOutputStream guidelinesStream = invoiceService.generateGuidelinesPDF();
-                guidelinesPdfBytes = guidelinesStream.toByteArray();
             } catch (Exception e) {
-                log.error("Failed to generate PDF invoice or guidelines for order placement email: {}", e.getMessage());
+                log.error("Failed to generate PDF invoice for order placement email: {}", e.getMessage());
             }
 
             emailService.sendOrderReceivedEmail(
@@ -242,10 +251,10 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
         if (order.getUser() == null) {
-            if (user.getRole() != User.Role.ADMIN) {
+            if (user.getRole() == User.Role.CUSTOMER) {
                 throw new RuntimeException("Unauthorized access to order");
             }
-        } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
+        } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() == User.Role.CUSTOMER) {
             throw new RuntimeException("Unauthorized access to order");
         }
 
@@ -258,6 +267,8 @@ public class OrderService {
         dto.setCreatedAt(order.getCreatedAt());
         dto.setStatus(order.getStatus());
         dto.setPaymentMethod(order.getPaymentMethod());
+        dto.setPaymentProofUrl(order.getPaymentProofUrl());
+        dto.setTransactionId(order.getTransactionId());
         dto.setCouponCode(order.getCouponCode());
         dto.setDiscount(order.getDiscount());
         dto.setShipping(order.getShipping());
@@ -336,6 +347,18 @@ public class OrderService {
         }
         dto.setAccessToken(order.getAccessToken());
 
+        if (order.getStatusHistory() != null) {
+            List<OrderStatusHistoryDTO> historyDTOs = new ArrayList<>();
+            for (OrderStatusHistory h : order.getStatusHistory()) {
+                OrderStatusHistoryDTO hDTO = new OrderStatusHistoryDTO();
+                hDTO.setStatus(h.getStatus());
+                hDTO.setNotes(h.getNotes());
+                hDTO.setTimestamp(h.getTimestamp());
+                historyDTOs.add(hDTO);
+            }
+            dto.setStatusHistory(historyDTOs);
+        }
+
         return dto;
     }
 
@@ -349,15 +372,21 @@ public class OrderService {
 
         if (user != null) {
             if (order.getUser() == null) {
-                if (user.getRole() != User.Role.ADMIN) {
+                if (user.getRole() == User.Role.CUSTOMER) {
                     throw new RuntimeException("Unauthorized to update order status");
                 }
-            } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN) {
+            } else if (!order.getUser().getId().equals(user.getId()) && user.getRole() == User.Role.CUSTOMER) {
                 throw new RuntimeException("Unauthorized to update order status");
             }
         }
 
         order.setStatus(status);
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setStatus(status);
+        history.setTimestamp(LocalDateTime.now());
+        history.setNotes("Status updated to " + status);
+        order.addStatusHistory(history);
+
         if (isFinalStatus(status)) {
             removeTemporaryOrderAddresses(order);
         }
@@ -373,6 +402,12 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
         order.setStatus(status);
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setStatus(status);
+        history.setTimestamp(LocalDateTime.now());
+        history.setNotes("Status updated by Admin to " + status);
+        order.addStatusHistory(history);
+
         if (isFinalStatus(status)) {
             removeTemporaryOrderAddresses(order);
         }
@@ -421,17 +456,21 @@ public class OrderService {
 
         byte[] pdfBytes = null;
         byte[] guidelinesPdfBytes = null;
+        String currentStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
+
         try {
             java.io.ByteArrayOutputStream pdfStream = invoiceService.generateInvoicePDF(order);
             pdfBytes = pdfStream.toByteArray();
             
-            java.io.ByteArrayOutputStream guidelinesStream = invoiceService.generateGuidelinesPDF();
-            guidelinesPdfBytes = guidelinesStream.toByteArray();
+            if ("DELIVERED".equals(currentStatus)) {
+                java.io.ByteArrayOutputStream guidelinesStream = invoiceService.generateGuidelinesPDF();
+                guidelinesPdfBytes = guidelinesStream.toByteArray();
+            }
         } catch (Exception e) {
             log.error("Failed to generate PDF invoice or guidelines for order status update email: {}", e.getMessage());
         }
 
-        switch (order.getStatus() != null ? order.getStatus().toUpperCase() : "") {
+        switch (currentStatus) {
             case "CONFIRMED":
                 emailService.sendOrderConfirmedEmail(
                         recipientEmail,
@@ -453,8 +492,50 @@ public class OrderService {
                         guidelinesPdfBytes
                 );
                 break;
+            case "SHIPPED":
+                emailService.sendOrderShippedEmail(
+                        recipientEmail,
+                        fullName,
+                        order.getId(),
+                        itemDTOs,
+                        order.getSubtotal(),
+                        order.getDiscount(),
+                        order.getShipping(),
+                        order.getHandlingCharge(),
+                        order.getPlatformFee(),
+                        order.getPlatformServicesFee(),
+                        order.getTotal(),
+                        order.getPaymentMethod(),
+                        deliveryAddress,
+                        city,
+                        order.getExpectedDeliveryDate(),
+                        pdfBytes,
+                        guidelinesPdfBytes
+                );
+                break;
             case "DELIVERED":
                 emailService.sendOrderDeliveredEmail(
+                        recipientEmail,
+                        fullName,
+                        order.getId(),
+                        itemDTOs,
+                        order.getSubtotal(),
+                        order.getDiscount(),
+                        order.getShipping(),
+                        order.getHandlingCharge(),
+                        order.getPlatformFee(),
+                        order.getPlatformServicesFee(),
+                        order.getTotal(),
+                        order.getPaymentMethod(),
+                        deliveryAddress,
+                        city,
+                        order.getExpectedDeliveryDate(),
+                        pdfBytes,
+                        guidelinesPdfBytes
+                );
+                break;
+            case "CANCELLED":
+                emailService.sendOrderCancelledEmail(
                         recipientEmail,
                         fullName,
                         order.getId(),
@@ -575,7 +656,7 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
         // Only order owner can cancel (or admin)
-        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() == User.Role.CUSTOMER)) {
             throw new RuntimeException("Unauthorized: you don't own this order");
         }
 
@@ -586,6 +667,12 @@ public class OrderService {
         }
 
         order.setStatus("CANCELLED");
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setStatus("CANCELLED");
+        history.setTimestamp(LocalDateTime.now());
+        history.setNotes(reason != null && !reason.trim().isEmpty() ? "Cancelled by user. Reason: " + reason : "Cancelled by user");
+        order.addStatusHistory(history);
+
         if (reason != null && !reason.trim().isEmpty()) {
             log.info("Order {} cancelled by user {} with reason: {}", orderId, username, reason);
         }
@@ -607,7 +694,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() == User.Role.CUSTOMER)) {
             throw new RuntimeException("Unauthorized: you don't own this order");
         }
 
@@ -617,6 +704,12 @@ public class OrderService {
         }
 
         order.setStatus("REFUNDED");
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setStatus("REFUNDED");
+        history.setTimestamp(LocalDateTime.now());
+        history.setNotes(reason != null && !reason.trim().isEmpty() ? "Refund requested. Reason: " + reason : "Refund requested");
+        order.addStatusHistory(history);
+
         log.info("Refund requested for order {} by {} — reason: {}", orderId, username, reason);
         Order saved = orderRepository.save(order);
 
@@ -635,7 +728,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() != User.Role.ADMIN)) {
+        if (order.getUser() == null || (!order.getUser().getId().equals(user.getId()) && user.getRole() == User.Role.CUSTOMER)) {
             throw new RuntimeException("Unauthorized: you don't own this order");
         }
 
@@ -645,6 +738,12 @@ public class OrderService {
         }
 
         order.setStatus("EXCHANGED");
+        OrderStatusHistory history2 = new OrderStatusHistory();
+        history2.setStatus("EXCHANGED");
+        history2.setTimestamp(LocalDateTime.now());
+        history2.setNotes(reason != null && !reason.trim().isEmpty() ? "Exchange requested. Reason: " + reason : "Exchange requested");
+        order.addStatusHistory(history2);
+
         log.info("Exchange requested for order {} by {} — reason: {}", orderId, username, reason);
         Order saved = orderRepository.save(order);
 

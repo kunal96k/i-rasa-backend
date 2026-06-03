@@ -213,6 +213,10 @@
                             <td class="label">Access Level</td>
                             <td class="value">Boutique Exclusive</td>
                         </tr>
+                        <tr th:if="${password != null}">
+                            <td class="label">Temporary Password</td>
+                            <td class="value" th:text="${password}">Password</td>
+                        </tr>
                     </table>
                 </div>
 

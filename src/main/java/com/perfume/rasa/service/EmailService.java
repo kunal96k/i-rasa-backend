@@ -57,7 +57,7 @@ public class EmailService {
         }
     }
 
-    public void sendWelcomeEmail(String toEmail, String fullName, String email, String loginLink) {
+    public void sendWelcomeEmail(String toEmail, String fullName, String email, String password, String loginLink) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -69,6 +69,7 @@ public class EmailService {
             Context context = new Context();
             context.setVariable("fullName", fullName);
             context.setVariable("email", email);
+            context.setVariable("password", password);
             context.setVariable("loginLink", loginLink);
 
             String html = templateEngine.process("email/welcome-email", context);
@@ -79,6 +80,10 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Failed to send welcome email to {}: {}", toEmail, e.getMessage());
         }
+    }
+
+    public void sendWelcomeEmail(String toEmail, String fullName, String email, String loginLink) {
+        sendWelcomeEmail(toEmail, fullName, email, null, loginLink);
     }
 
     public void sendOtpEmail(String toEmail, String otp) {
@@ -146,9 +151,15 @@ public class EmailService {
             Context ctx = new Context();
             ctx.setVariable("fullName", fullName);
             ctx.setVariable("orderId", orderId);
-            ctx.setVariable("subject", "Order Received — Payment Under Verification");
-            ctx.setVariable("bodyIntro", "Thank you for your order! We've received it and your payment is under verification.");
-            ctx.setVariable("status", "Payment Verification Pending");
+            if ("COD".equalsIgnoreCase(paymentMethod)) {
+                ctx.setVariable("subject", "Order Received — Confirmed COD");
+                ctx.setVariable("bodyIntro", "Thank you for your order! We've received it and your COD order is confirmed.");
+                ctx.setVariable("status", "Confirmed COD");
+            } else {
+                ctx.setVariable("subject", "Order Received — Payment Under Verification");
+                ctx.setVariable("bodyIntro", "Thank you for your order! We've received it and your payment is under verification.");
+                ctx.setVariable("status", "Payment Verification Pending");
+            }
             ctx.setVariable("paymentMethod", paymentMethod);
             ctx.setVariable("items", items);
             ctx.setVariable("subtotal", subtotal);
@@ -162,8 +173,13 @@ public class EmailService {
             ctx.setVariable("city", city);
             ctx.setVariable("expectedDeliveryDate", expectedDeliveryDate != null
                     ? expectedDeliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")) : null);
-            ctx.setVariable("statusNote",
-                    "Your payment is under verification by our team. Once confirmed, you'll receive an order confirmation email with final delivery details.");
+            if ("COD".equalsIgnoreCase(paymentMethod)) {
+                ctx.setVariable("statusNote",
+                        "Your COD order is confirmed and will be processed shortly. You'll receive further updates regarding delivery details.");
+            } else {
+                ctx.setVariable("statusNote",
+                        "Your payment is under verification by our team. Once confirmed, you'll receive an order confirmation email with final delivery details.");
+            }
 
             String html = templateEngine.process("email/order-confirmation", ctx);
             helper.setText(html, true);
@@ -204,7 +220,11 @@ public class EmailService {
             ctx.setVariable("fullName", fullName);
             ctx.setVariable("orderId", orderId);
             ctx.setVariable("subject", "Order Confirmed! 🎉");
-            ctx.setVariable("bodyIntro", "Great news! Your payment has been verified and your order is now confirmed. We're preparing your fragrance with care.");
+            if ("COD".equalsIgnoreCase(paymentMethod)) {
+                ctx.setVariable("bodyIntro", "Great news! Your order is now confirmed. We're preparing your fragrance with care.");
+            } else {
+                ctx.setVariable("bodyIntro", "Great news! Your payment has been verified and your order is now confirmed. We're preparing your fragrance with care.");
+            }
             ctx.setVariable("status", "Confirmed ✅");
             ctx.setVariable("paymentMethod", paymentMethod);
             ctx.setVariable("items", items);
@@ -290,6 +310,104 @@ public class EmailService {
             log.info("Order delivered email sent to {} for order #{}", toEmail, orderId);
         } catch (Exception e) {
             log.error("Failed to send order delivered email for order #{}: {}", orderId, e.getMessage());
+        }
+    }
+
+    public void sendOrderCancelledEmail(String toEmail, String fullName, Long orderId,
+                                        java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
+                                        java.math.BigDecimal subtotal, java.math.BigDecimal discount,
+                                        java.math.BigDecimal shipping, java.math.BigDecimal handlingCharge, java.math.BigDecimal platformFee, java.math.BigDecimal platformServicesFee, java.math.BigDecimal total,
+                                        String paymentMethod, String deliveryAddress, String city,
+                                        java.time.LocalDate expectedDeliveryDate,
+                                        byte[] pdfBytes,
+                                        byte[] guidelinesPdfBytes) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(toEmail);
+            helper.setSubject("Order RASA-" + orderId + " Cancelled — I Rasa Perfumes");
+
+            Context ctx = new Context();
+            ctx.setVariable("fullName", fullName);
+            ctx.setVariable("orderId", orderId);
+            ctx.setVariable("subject", "Order Cancelled");
+            ctx.setVariable("bodyIntro", "Your order has been cancelled. We're sorry it didn't work out this time.");
+            ctx.setVariable("status", "Cancelled ❌");
+            ctx.setVariable("paymentMethod", paymentMethod);
+            ctx.setVariable("items", items);
+            ctx.setVariable("subtotal", subtotal);
+            ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
+            ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("handlingCharge", handlingCharge != null ? handlingCharge : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformFee", platformFee != null ? platformFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformServicesFee", platformServicesFee != null ? platformServicesFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("total", total);
+            ctx.setVariable("deliveryAddress", deliveryAddress);
+            ctx.setVariable("city", city);
+            ctx.setVariable("expectedDeliveryDate", expectedDeliveryDate != null
+                    ? expectedDeliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")) : null);
+            
+            String note = "If you have any questions or if you'd like to place a new order, feel free to contact us.";
+            if (paymentMethod != null && (paymentMethod.equalsIgnoreCase("UPI") || paymentMethod.equalsIgnoreCase("Online"))) {
+                note = "Your payment will refund to your original payment method account within 5-7 business days. " + note;
+            }
+            ctx.setVariable("statusNote", note);
+
+            String html = templateEngine.process("email/order-cancelled", ctx);
+            helper.setText(html, true);
+
+            mailSender.send(message);
+            log.info("Order cancelled email sent to {} for order #{}", toEmail, orderId);
+        } catch (Exception e) {
+            log.error("Failed to send order cancelled email for order #{}: {}", orderId, e.getMessage());
+        }
+    }
+
+    public void sendOrderShippedEmail(String toEmail, String fullName, Long orderId,
+                                        java.util.List<com.perfume.rasa.dto.OrderItemRequestDTO> items,
+                                        java.math.BigDecimal subtotal, java.math.BigDecimal discount,
+                                        java.math.BigDecimal shipping, java.math.BigDecimal handlingCharge, java.math.BigDecimal platformFee, java.math.BigDecimal platformServicesFee, java.math.BigDecimal total,
+                                        String paymentMethod, String deliveryAddress, String city,
+                                        java.time.LocalDate expectedDeliveryDate,
+                                        byte[] pdfBytes,
+                                        byte[] guidelinesPdfBytes) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(toEmail);
+            helper.setSubject("Your order RASA-" + orderId + " has shipped! — I Rasa Perfumes");
+
+            Context ctx = new Context();
+            ctx.setVariable("fullName", fullName);
+            ctx.setVariable("orderId", orderId);
+            ctx.setVariable("subject", "Order Shipped! 🚚");
+            ctx.setVariable("bodyIntro", "Your order has been shipped and is on its way to you.");
+            ctx.setVariable("status", "Shipped 🚚");
+            ctx.setVariable("paymentMethod", paymentMethod);
+            ctx.setVariable("items", items);
+            ctx.setVariable("subtotal", subtotal);
+            ctx.setVariable("discount", discount != null ? discount : java.math.BigDecimal.ZERO);
+            ctx.setVariable("shipping", shipping != null ? shipping : java.math.BigDecimal.ZERO);
+            ctx.setVariable("handlingCharge", handlingCharge != null ? handlingCharge : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformFee", platformFee != null ? platformFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("platformServicesFee", platformServicesFee != null ? platformServicesFee : java.math.BigDecimal.ZERO);
+            ctx.setVariable("total", total);
+            ctx.setVariable("deliveryAddress", deliveryAddress);
+            ctx.setVariable("city", city);
+            ctx.setVariable("expectedDeliveryDate", expectedDeliveryDate != null
+                    ? expectedDeliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")) : null);
+            ctx.setVariable("statusNote",
+                    "Your order is on the way. You can track your shipment details from your profile page.");
+
+            String html = templateEngine.process("email/order-shipped", ctx);
+            helper.setText(html, true);
+
+            mailSender.send(message);
+            log.info("Order shipped email sent to {} for order #{}", toEmail, orderId);
+        } catch (Exception e) {
+            log.error("Failed to send order shipped email for order #{}: {}", orderId, e.getMessage());
         }
     }
 

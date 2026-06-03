@@ -43,7 +43,7 @@ public class AdminEnquiryController {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User.Role role = userOpt.get().getRole();
-            return role == User.Role.ADMIN || role == User.Role.EMPLOYEE;
+            return role == User.Role.ADMIN || role == User.Role.EMPLOYEE || role == User.Role.SUPERADMIN;
         }
         return false;
     }
@@ -55,10 +55,9 @@ public class AdminEnquiryController {
             @RequestParam(defaultValue = "ALL") String status,
             Authentication authentication) {
 
-        // Re-enabled auth check before production
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             Pageable pageable = PageRequest.of(page, size);
@@ -87,10 +86,9 @@ public class AdminEnquiryController {
 
     @PostMapping
     public ResponseEntity<?> createManualEnquiry(@RequestBody Enquiry enquiry, Authentication authentication) {
-        // Re-enabled auth check before production
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             if (enquiry.getName() == null || enquiry.getEmail() == null || enquiry.getSubject() == null || enquiry.getMessage() == null) {
@@ -163,10 +161,9 @@ public class AdminEnquiryController {
             @RequestParam String status,
             Authentication authentication) {
             
-        // Re-enabled auth check before production
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             Enquiry enquiry = enquiryRepository.findAll().stream()
@@ -196,10 +193,9 @@ public class AdminEnquiryController {
             @RequestBody Enquiry updatedEnquiry,
             Authentication authentication) {
             
-        // Re-enabled auth check before production
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
 
         try {
             Enquiry enquiry = enquiryRepository.findAll().stream()
@@ -250,10 +246,9 @@ public class AdminEnquiryController {
 
     @DeleteMapping("/{enquiryId}")
     public ResponseEntity<?> deleteEnquiry(@PathVariable String enquiryId, Authentication authentication) {
-        // Re-enabled auth check before production
-        // if (!isAdminOrEmployee(authentication)) {
-        //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
-        // }
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
         
         try {
             Enquiry enquiry = enquiryRepository.findAll().stream()

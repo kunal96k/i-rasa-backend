@@ -212,7 +212,7 @@ public class OrderController {
                 Optional<User> currentUserOpt = userRepository.findByEmail(username);
                 if (currentUserOpt.isPresent()) {
                     User currentUser = currentUserOpt.get();
-                    if (currentUser.getRole() == User.Role.ADMIN) {
+                    if (currentUser.getRole() != User.Role.CUSTOMER) {
                         authorized = true;
                     } else if (order.getUser() != null && order.getUser().getId().equals(currentUser.getId())) {
                         authorized = true;
@@ -261,7 +261,7 @@ public class OrderController {
                 Optional<User> currentUserOpt = userRepository.findByEmail(username);
                 if (currentUserOpt.isPresent()) {
                     User currentUser = currentUserOpt.get();
-                    if (currentUser.getRole() == User.Role.ADMIN) {
+                    if (currentUser.getRole() != User.Role.CUSTOMER) {
                         authorized = true;
                     } else if (order.getUser() != null && order.getUser().getId().equals(currentUser.getId())) {
                         authorized = true;

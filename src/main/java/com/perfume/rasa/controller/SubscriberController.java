@@ -3,11 +3,18 @@ package com.perfume.rasa.controller;
 import com.perfume.rasa.dto.ApiResponse;
 import com.perfume.rasa.model.Subscriber;
 import com.perfume.rasa.repository.SubscriberRepository;
+import com.perfume.rasa.repository.UserRepository;
 import com.perfume.rasa.service.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +32,19 @@ public class SubscriberController {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private boolean isAdminOrEmployee(Authentication authentication) {
+        if (authentication == null) return false;
+        Optional<com.perfume.rasa.model.User> userOpt = userRepository.findByEmail(authentication.getName());
+        if (userOpt.isPresent()) {
+            com.perfume.rasa.model.User.Role role = userOpt.get().getRole();
+            return role == com.perfume.rasa.model.User.Role.ADMIN || role == com.perfume.rasa.model.User.Role.EMPLOYEE || role == com.perfume.rasa.model.User.Role.SUPERADMIN;
+        }
+        return false;
+    }
 
     /**
      * Public endpoint to subscribe to newsletter.
@@ -70,14 +90,66 @@ public class SubscriberController {
      * Admin endpoint to get list of all subscribers.
      */
     @GetMapping("/list")
-    public ResponseEntity<?> getSubscribers() {
+    public ResponseEntity<?> getSubscribers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortOrder,
+            Authentication authentication) {
+
+        if (!isAdminOrEmployee(authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
+        }
+
         try {
-            List<Subscriber> list = subscriberRepository.findAll();
-            return ResponseEntity.ok(new ApiResponse(true, "Subscribers fetched successfully", list));
+            String normalizedSortBy = "createdAt";
+            if (java.util.Arrays.asList("id", "email", "createdAt", "status").contains(sortBy)) {
+                normalizedSortBy = sortBy;
+            }
+            Sort.Direction direction = "ASC".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            Pageable pageable = PageRequest.of(page, size, Sort.by(direction, normalizedSortBy));
+
+            Specification<Subscriber> spec = Specification.where(null);
+
+            if (!"ALL".equalsIgnoreCase(status)) {
+                boolean activeVal = "ON".equalsIgnoreCase(status) || "ACTIVE".equalsIgnoreCase(status) || "TRUE".equalsIgnoreCase(status);
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), activeVal));
+            }
+
+            if (search != null && !search.trim().isEmpty()) {
+                String q = "%" + search.trim().toLowerCase() + "%";
+                spec = spec.and((root, query, cb) -> {
+                    var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+                    predicates.add(cb.like(cb.lower(root.get("email")), q));
+                    try {
+                        Long idVal = Long.parseLong(search.trim());
+                        predicates.add(cb.equal(root.get("id"), idVal));
+                    } catch (NumberFormatException e) {
+                        // ignore
+                    }
+                    return cb.or(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                });
+            }
+
+            Page<Subscriber> subscribersPage = subscriberRepository.findAll(spec, pageable);
+
+            Map<String, Object> data = Map.of(
+                    "content", subscribersPage.getContent(),
+                    "currentPage", subscribersPage.getNumber(),
+                    "totalItems", subscribersPage.getTotalElements(),
+                    "totalPages", subscribersPage.getTotalPages(),
+                    "size", subscribersPage.getSize(),
+                    "sortBy", normalizedSortBy,
+                    "sortOrder", direction.name()
+            );
+
+            return ResponseEntity.ok(new ApiResponse(true, "Subscribers fetched successfully", data));
         } catch (Exception e) {
             log.error("Error fetching subscribers", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse(false, "Error fetching subscribers list", null));
+                    .body(new ApiResponse(false, "Error fetching subscribers list: " + e.getMessage(), null));
         }
     }
 

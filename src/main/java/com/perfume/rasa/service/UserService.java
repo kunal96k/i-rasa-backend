@@ -44,7 +44,7 @@ public class UserService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
-                user.isEmailVerified(), // account enabled only when verified
+                user.isEmailVerified() && !user.isLocked(), // account enabled only when verified and not locked
                 true, true, true,
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
     }

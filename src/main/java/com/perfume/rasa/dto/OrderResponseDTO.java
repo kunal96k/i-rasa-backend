@@ -10,6 +10,8 @@ public class OrderResponseDTO {
     private LocalDateTime createdAt;
     private String status;
     private String paymentMethod;
+    private String paymentProofUrl;
+    private String transactionId;
     private String couponCode;
     private BigDecimal discount;
     private BigDecimal shipping;
@@ -61,4 +63,12 @@ public class OrderResponseDTO {
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
+    public String getPaymentProofUrl() { return paymentProofUrl; }
+    public void setPaymentProofUrl(String paymentProofUrl) { this.paymentProofUrl = paymentProofUrl; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+    
+    private List<OrderStatusHistoryDTO> statusHistory;
+    public List<OrderStatusHistoryDTO> getStatusHistory() { return statusHistory; }
+    public void setStatusHistory(List<OrderStatusHistoryDTO> statusHistory) { this.statusHistory = statusHistory; }
 }

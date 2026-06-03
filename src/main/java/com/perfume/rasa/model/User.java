@@ -24,10 +24,14 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private Role role = Role.CUSTOMER;
 
     @Column(nullable = false)
     private boolean emailVerified = false;
+
+    @Column(nullable = false)
+    private boolean locked = false;
 
     @Column
     private String emailVerificationToken;
@@ -40,7 +44,10 @@ public class User {
 
     public User() {}
 
-    public enum Role { CUSTOMER, ADMIN, EMPLOYEE }
+    public enum Role { CUSTOMER, ADMIN, EMPLOYEE, SUPERADMIN }
+
+    public boolean isLocked() { return locked; }
+    public void setLocked(boolean locked) { this.locked = locked; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
