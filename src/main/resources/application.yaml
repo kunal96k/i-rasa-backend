@@ -57,9 +57,18 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
   endpoint:
     health:
       show-details: always
       probes:
         enabled: true
+    info:
+      enabled: true
+
+info:
+  app:
+    name: I Rasa Perfumes Backend
+    version: 0.0.1-SNAPSHOT
+    description: Production backend service for I Rasa Perfumes
+

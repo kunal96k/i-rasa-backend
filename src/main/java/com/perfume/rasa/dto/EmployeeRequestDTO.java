@@ -14,9 +14,6 @@ public class EmployeeRequestDTO {
 
     private String designation;
 
-    @DecimalMin(value = "0.0", inclusive = true, message = "Salary must be non-negative")
-    private BigDecimal salary;
-
     private LocalDate dateOfJoining;
 
     // Login user details
@@ -47,9 +44,6 @@ public class EmployeeRequestDTO {
 
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
-
-    public BigDecimal getSalary() { return salary; }
-    public void setSalary(BigDecimal salary) { this.salary = salary; }
 
     public LocalDate getDateOfJoining() { return dateOfJoining; }
     public void setDateOfJoining(LocalDate dateOfJoining) { this.dateOfJoining = dateOfJoining; }

@@ -22,9 +22,6 @@ public class Employee {
     private String designation;
 
     @Column
-    private BigDecimal salary;
-
-    @Column
     private LocalDate dateOfJoining;
 
     @OneToOne(fetch = FetchType.EAGER)
@@ -44,9 +41,6 @@ public class Employee {
 
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
-
-    public BigDecimal getSalary() { return salary; }
-    public void setSalary(BigDecimal salary) { this.salary = salary; }
 
     public LocalDate getDateOfJoining() { return dateOfJoining; }
     public void setDateOfJoining(LocalDate dateOfJoining) { this.dateOfJoining = dateOfJoining; }

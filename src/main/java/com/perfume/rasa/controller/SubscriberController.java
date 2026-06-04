@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,12 +37,12 @@ public class SubscriberController {
     @Autowired
     private UserRepository userRepository;
 
-    private boolean isAdminOrEmployee(Authentication authentication) {
+    private boolean isAdmin(Authentication authentication) {
         if (authentication == null) return false;
         Optional<com.perfume.rasa.model.User> userOpt = userRepository.findByEmail(authentication.getName());
         if (userOpt.isPresent()) {
             com.perfume.rasa.model.User.Role role = userOpt.get().getRole();
-            return role == com.perfume.rasa.model.User.Role.ADMIN || role == com.perfume.rasa.model.User.Role.EMPLOYEE || role == com.perfume.rasa.model.User.Role.SUPERADMIN;
+            return role == com.perfume.rasa.model.User.Role.ADMIN || role == com.perfume.rasa.model.User.Role.SUPERADMIN;
         }
         return false;
     }
@@ -90,6 +91,7 @@ public class SubscriberController {
      * Admin endpoint to get list of all subscribers.
      */
     @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<?> getSubscribers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -99,7 +101,7 @@ public class SubscriberController {
             @RequestParam(defaultValue = "DESC") String sortOrder,
             Authentication authentication) {
 
-        if (!isAdminOrEmployee(authentication)) {
+        if (!isAdmin(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
         }
 
@@ -157,6 +159,7 @@ public class SubscriberController {
      * Admin endpoint to toggle subscriber active/inactive status (ON/OFF).
      */
     @PutMapping("/{id}/toggle")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<?> toggleSubscriberStatus(@PathVariable Long id) {
         try {
             Optional<Subscriber> subOpt = subscriberRepository.findById(id);
@@ -181,6 +184,7 @@ public class SubscriberController {
      * Admin endpoint to delete subscriber.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<?> deleteSubscriber(@PathVariable Long id) {
         try {
             if (!subscriberRepository.existsById(id)) {
@@ -200,6 +204,7 @@ public class SubscriberController {
      * Admin endpoint to send a newsletter email to all active subscribers.
      */
     @PostMapping("/send-newsletter")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<?> sendNewsletter(@RequestBody Map<String, String> payload) {
         try {
             String subject = payload.get("subject");

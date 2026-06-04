@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/coupons")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
 public class AdminCouponController {
 
     @Autowired
@@ -30,12 +32,11 @@ public class AdminCouponController {
     @Autowired
     private UserRepository userRepository;
 
-    private boolean isAdminOrEmployee(Authentication auth) {
+    private boolean isAdmin(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return false;
         Optional<User> userOpt = userRepository.findByEmail(auth.getName());
         return userOpt.isPresent() && (
             userOpt.get().getRole() == User.Role.ADMIN || 
-            userOpt.get().getRole() == User.Role.EMPLOYEE || 
             userOpt.get().getRole() == User.Role.SUPERADMIN
         );
     }
@@ -47,7 +48,7 @@ public class AdminCouponController {
             @RequestParam(required = false) String search,
             Authentication authentication) {
 
-        if (!isAdminOrEmployee(authentication)) {
+        if (!isAdmin(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
         }
 
@@ -78,7 +79,7 @@ public class AdminCouponController {
 
     @PostMapping
     public ResponseEntity<?> createCoupon(@RequestBody Coupon coupon, Authentication authentication) {
-        if (!isAdminOrEmployee(authentication)) {
+        if (!isAdmin(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
         }
 
@@ -107,7 +108,7 @@ public class AdminCouponController {
 
     @PutMapping("/{id}/status")
     public ResponseEntity<?> toggleCouponStatus(@PathVariable Long id, @RequestParam boolean active, Authentication authentication) {
-        if (!isAdminOrEmployee(authentication)) {
+        if (!isAdmin(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
         }
 
@@ -132,7 +133,7 @@ public class AdminCouponController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCoupon(@PathVariable Long id, Authentication authentication) {
-        if (!isAdminOrEmployee(authentication)) {
+        if (!isAdmin(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Access Denied", null));
         }
 

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
@@ -106,7 +107,9 @@ public class AdminDashboardController {
 
     // ─── Endpoint: Dashboard Overview ─────────────────────────────────────────────
     @GetMapping("/overview")
-    public ResponseEntity<ApiResponse> getOverview(Authentication authentication) {
+    public ResponseEntity<ApiResponse> getOverview(
+            @RequestParam(defaultValue = "6m") String period,
+            Authentication authentication) {
         if (!hasAdminAccess(authentication)) return forbidden();
 
         try {
@@ -116,29 +119,102 @@ public class AdminDashboardController {
             OrderAggregates agg = new OrderAggregates();
             allOrders.forEach(agg::accumulate);
 
-            // Monthly revenue chart — last 6 months
-            LocalDate now = LocalDate.now();
-            List<YearMonth> last6Months = new ArrayList<>();
-            for (int i = 5; i >= 0; i--) {
-                last6Months.add(YearMonth.from(now.minusMonths(i)));
-            }
-
-            Map<YearMonth, BigDecimal> monthlyMap = allOrders.stream()
-                    .filter(o -> o.getCreatedAt() != null
-                            && o.getStatus() != null
-                            && !o.getStatus().equalsIgnoreCase("CANCELLED"))
-                    .collect(Collectors.groupingBy(
-                            o -> YearMonth.from(o.getCreatedAt()),
-                            Collectors.reducing(
-                                    BigDecimal.ZERO,
-                                    o -> o.getTotal() != null ? o.getTotal() : BigDecimal.ZERO,
-                                    BigDecimal::add)));
-
+            // Chart data based on period
             List<String> labels = new ArrayList<>();
             List<BigDecimal> chartValues = new ArrayList<>();
-            for (YearMonth ym : last6Months) {
-                labels.add(ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
-                chartValues.add(monthlyMap.getOrDefault(ym, BigDecimal.ZERO));
+            LocalDate now = LocalDate.now();
+
+            if ("today".equalsIgnoreCase(period)) {
+                // Today's hourly buckets: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00
+                List<Integer> buckets = List.of(0, 4, 8, 12, 16, 20);
+                Map<Integer, BigDecimal> hourlyMap = new HashMap<>();
+                buckets.forEach(b -> hourlyMap.put(b, BigDecimal.ZERO));
+
+                LocalDate today = LocalDate.now();
+                allOrders.stream()
+                        .filter(o -> o.getCreatedAt() != null
+                                && o.getCreatedAt().toLocalDate().equals(today)
+                                && o.getStatus() != null
+                                && !o.getStatus().equalsIgnoreCase("CANCELLED"))
+                        .forEach(o -> {
+                            int hour = o.getCreatedAt().getHour();
+                            int bucket = (hour / 4) * 4;
+                            BigDecimal currentVal = hourlyMap.getOrDefault(bucket, BigDecimal.ZERO);
+                            hourlyMap.put(bucket, currentVal.add(o.getTotal() != null ? o.getTotal() : BigDecimal.ZERO));
+                        });
+
+                List<String> bucketLabels = List.of("12 AM", "4 AM", "8 AM", "12 PM", "4 PM", "8 PM");
+                for (int i = 0; i < buckets.size(); i++) {
+                    labels.add(bucketLabels.get(i));
+                    chartValues.add(hourlyMap.getOrDefault(buckets.get(i), BigDecimal.ZERO));
+                }
+            } else if ("7d".equalsIgnoreCase(period)) {
+                // Last 7 days daily buckets
+                List<LocalDate> last7Days = new ArrayList<>();
+                for (int i = 6; i >= 0; i--) {
+                    last7Days.add(now.minusDays(i));
+                }
+
+                Map<LocalDate, BigDecimal> dailyMap = allOrders.stream()
+                        .filter(o -> o.getCreatedAt() != null
+                                && o.getStatus() != null
+                                && !o.getStatus().equalsIgnoreCase("CANCELLED"))
+                        .collect(Collectors.groupingBy(
+                                o -> o.getCreatedAt().toLocalDate(),
+                                Collectors.reducing(
+                                        BigDecimal.ZERO,
+                                        o -> o.getTotal() != null ? o.getTotal() : BigDecimal.ZERO,
+                                        BigDecimal::add)));
+
+                java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd MMM");
+                for (LocalDate d : last7Days) {
+                    labels.add(d.format(dtf));
+                    chartValues.add(dailyMap.getOrDefault(d, BigDecimal.ZERO));
+                }
+            } else if ("1y".equalsIgnoreCase(period)) {
+                // Last 12 months monthly buckets
+                List<YearMonth> last12Months = new ArrayList<>();
+                for (int i = 11; i >= 0; i--) {
+                    last12Months.add(YearMonth.from(now.minusMonths(i)));
+                }
+
+                Map<YearMonth, BigDecimal> monthlyMap = allOrders.stream()
+                        .filter(o -> o.getCreatedAt() != null
+                                && o.getStatus() != null
+                                && !o.getStatus().equalsIgnoreCase("CANCELLED"))
+                        .collect(Collectors.groupingBy(
+                                o -> YearMonth.from(o.getCreatedAt()),
+                                Collectors.reducing(
+                                        BigDecimal.ZERO,
+                                        o -> o.getTotal() != null ? o.getTotal() : BigDecimal.ZERO,
+                                        BigDecimal::add)));
+
+                for (YearMonth ym : last12Months) {
+                    labels.add(ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + " " + String.valueOf(ym.getYear()).substring(2));
+                    chartValues.add(monthlyMap.getOrDefault(ym, BigDecimal.ZERO));
+                }
+            } else {
+                // Default: "6m" (Last 6 months monthly buckets)
+                List<YearMonth> last6Months = new ArrayList<>();
+                for (int i = 5; i >= 0; i--) {
+                    last6Months.add(YearMonth.from(now.minusMonths(i)));
+                }
+
+                Map<YearMonth, BigDecimal> monthlyMap = allOrders.stream()
+                        .filter(o -> o.getCreatedAt() != null
+                                && o.getStatus() != null
+                                && !o.getStatus().equalsIgnoreCase("CANCELLED"))
+                        .collect(Collectors.groupingBy(
+                                o -> YearMonth.from(o.getCreatedAt()),
+                                Collectors.reducing(
+                                        BigDecimal.ZERO,
+                                        o -> o.getTotal() != null ? o.getTotal() : BigDecimal.ZERO,
+                                        BigDecimal::add)));
+
+                for (YearMonth ym : last6Months) {
+                    labels.add(ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
+                    chartValues.add(monthlyMap.getOrDefault(ym, BigDecimal.ZERO));
+                }
             }
 
             // Pending tickets (not RESOLVED)
@@ -174,6 +250,7 @@ public class AdminDashboardController {
 
     // ─── Endpoint: Sales Report (paginated) ───────────────────────────────────────
     @GetMapping("/reports/sales")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<ApiResponse> getSalesReport(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
@@ -268,6 +345,7 @@ public class AdminDashboardController {
 
     // ─── Endpoint: Tickets Report (paginated, server-side) ────────────────────────
     @GetMapping("/reports/tickets")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<ApiResponse> getTicketsReport(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
@@ -370,6 +448,7 @@ public class AdminDashboardController {
 
     // ─── Endpoint: Users Report (paginated, server-side) ─────────────────────────
     @GetMapping("/reports/users")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<ApiResponse> getUsersReport(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,

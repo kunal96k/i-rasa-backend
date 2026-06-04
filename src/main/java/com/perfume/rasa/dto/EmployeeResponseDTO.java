@@ -9,7 +9,6 @@ public class EmployeeResponseDTO {
     private String employeeId;
     private String department;
     private String designation;
-    private BigDecimal salary;
     private LocalDate dateOfJoining;
     
     private Long userId;
@@ -35,9 +34,6 @@ public class EmployeeResponseDTO {
 
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
-
-    public BigDecimal getSalary() { return salary; }
-    public void setSalary(BigDecimal salary) { this.salary = salary; }
 
     public LocalDate getDateOfJoining() { return dateOfJoining; }
     public void setDateOfJoining(LocalDate dateOfJoining) { this.dateOfJoining = dateOfJoining; }

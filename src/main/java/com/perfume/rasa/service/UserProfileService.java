@@ -126,7 +126,6 @@ public class UserProfileService {
                 empDto.setEmployeeId(emp.getEmployeeId());
                 empDto.setDepartment(emp.getDepartment());
                 empDto.setDesignation(emp.getDesignation());
-                empDto.setSalary(emp.getSalary());
                 empDto.setDateOfJoining(emp.getDateOfJoining());
                 empDto.setUserId(user.getId());
                 empDto.setFullName(user.getFullName());

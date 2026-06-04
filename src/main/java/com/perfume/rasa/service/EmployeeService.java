@@ -134,7 +134,6 @@ public class EmployeeService {
         employee.setEmployeeId(dto.getEmployeeId().trim());
         employee.setDepartment(dto.getDepartment() != null ? dto.getDepartment().trim() : null);
         employee.setDesignation(dto.getDesignation() != null ? dto.getDesignation().trim() : null);
-        employee.setSalary(dto.getSalary());
         employee.setDateOfJoining(dto.getDateOfJoining());
         employee.setUser(savedUser);
         Employee savedEmployee = employeeRepository.save(employee);
@@ -159,8 +158,8 @@ public class EmployeeService {
 
         // Unique check for employee ID if changed
         String reqEmpId = dto.getEmployeeId().trim();
-        if (!employee.getEmployeeId().equalsIgnoreCase(reqEmpId) && employeeRepository.existsByEmployeeId(reqEmpId)) {
-            throw new IllegalArgumentException("Employee ID already exists: " + reqEmpId);
+        if (!employee.getEmployeeId().equalsIgnoreCase(reqEmpId)) {
+            throw new IllegalArgumentException("Employee ID cannot be updated.");
         }
 
         // Unique checks for user fields if changed
@@ -192,7 +191,6 @@ public class EmployeeService {
         employee.setEmployeeId(reqEmpId);
         employee.setDepartment(dto.getDepartment() != null ? dto.getDepartment().trim() : null);
         employee.setDesignation(dto.getDesignation() != null ? dto.getDesignation().trim() : null);
-        employee.setSalary(dto.getSalary());
         employee.setDateOfJoining(dto.getDateOfJoining());
         Employee savedEmployee = employeeRepository.save(employee);
 
@@ -252,7 +250,6 @@ public class EmployeeService {
         dto.setEmployeeId(employee.getEmployeeId());
         dto.setDepartment(employee.getDepartment());
         dto.setDesignation(employee.getDesignation());
-        dto.setSalary(employee.getSalary());
         dto.setDateOfJoining(employee.getDateOfJoining());
 
         User user = employee.getUser();

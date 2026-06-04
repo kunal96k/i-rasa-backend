@@ -53,6 +53,24 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse> handleBusinessException(BusinessException ex) {
+        log.warn("Business logic exception: {}", ex.getMessage());
+        return ResponseEntity.status(ex.getStatusCode()).body(new ApiResponse(false, ex.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        log.warn("Resource not found exception: {}", ex.getMessage());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(new ApiResponse(false, ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityException.class)
+    public ResponseEntity<ApiResponse> handleDataIntegrityException(DataIntegrityException ex) {
+        log.warn("Data integrity exception: {}", ex.getMessage());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(new ApiResponse(false, ex.getMessage()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime exception: ", ex);
