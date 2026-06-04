@@ -32,8 +32,13 @@ public class Coupon {
     private String validity;
     private String discount;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public BigDecimal getDiscountAmount() { return discountAmount; }

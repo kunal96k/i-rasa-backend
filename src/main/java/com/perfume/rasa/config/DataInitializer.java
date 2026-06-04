@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -67,7 +66,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // ── Ensure default Super Admin exists ──
         String checkEmail = adminEmail.toLowerCase().trim();
-        if (userRepository.findByEmail(checkEmail).isEmpty()) {
+        if (userRepository.count() == 0) {
             User superadmin = new User();
             superadmin.setEmail(checkEmail);
             superadmin.setPassword(passwordEncoder.encode(adminPassword));
@@ -88,26 +87,21 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
-        // ── Remove ALL coupons except REFIL100 ──
-        List<Coupon> allCoupons = couponRepository.findAll();
-        for (Coupon c : allCoupons) {
-            if (!"REFIL100".equalsIgnoreCase(c.getCode())) {
-                couponRepository.delete(c);
-            }
+        // ── Ensure coupons are seeded only if the table is empty ──
+        if (couponRepository.count() == 0) {
+            // ── Seed REFILL100 ──
+            Coupon refillCoupon = new Coupon();
+            refillCoupon.setCode("REFILL100");
+            refillCoupon.setDiscountAmount(BigDecimal.ZERO);
+            refillCoupon.setMinCartValue(null); // No minimum order required
+            refillCoupon.setActive(true);
+            refillCoupon.setExpiryDate(LocalDateTime.of(2099, 12, 31, 23, 59, 59));
+            refillCoupon.setDescription(
+                    "Bring your empty bottle to our store to get \u20b9100 off on your next refill. This coupon is noted on your invoice.");
+            refillCoupon.setValidity("All Time");
+            refillCoupon.setDiscount("\u267b\ufe0f Bottle Refill Offer");
+            couponRepository.save(refillCoupon);
+            log.info("Refill coupon (REFILL100) successfully initialized.");
         }
-
-        // ── Ensure REFIL100 exists and is properly configured ──
-        Coupon refillCoupon = couponRepository.findByCode("REFIL100").orElseGet(Coupon::new);
-        refillCoupon.setCode("REFIL100");
-        refillCoupon.setDiscountAmount(new BigDecimal("100.00"));
-        refillCoupon.setMinCartValue(null); // No minimum order required
-        refillCoupon.setActive(true);
-        refillCoupon.setExpiryDate(LocalDateTime.of(2099, 12, 31, 23, 59, 59));
-        refillCoupon.setDescription(
-                "Bring your empty bottle to our store to get \u20b9100 off on your next refill. This coupon is noted on your invoice.");
-        refillCoupon.setValidity("All Time");
-        refillCoupon.setDiscount("\u267b\ufe0f Bottle Refill Offer");
-
-        couponRepository.save(refillCoupon);
     }
 }

@@ -51,7 +51,7 @@ app:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:admin123}
     name: ${ADMIN_NAME:System Admin}
-    email: ${ADMIN_EMAIL:admin@rasa.com}
+    email: ${ADMIN_EMAIL:irasaperfumes@gmail.com}
 
 management:
   endpoints:

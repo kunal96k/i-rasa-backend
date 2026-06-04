@@ -50,6 +50,22 @@ public class CouponService {
                     + coupon.getMinCartValue().toPlainString() + " required for this coupon");
         }
 
+        // Check perfume eligibility for refill coupons
+        if ("REFIL100".equalsIgnoreCase(coupon.getCode()) || "REFILL100".equalsIgnoreCase(coupon.getCode())) {
+            boolean hasPerfume = false;
+            if (request.getItems() != null) {
+                for (com.perfume.rasa.dto.OrderItemRequestDTO item : request.getItems()) {
+                    if (isPerfume(item.getProductId()) || isPerfume(item.getName())) {
+                        hasPerfume = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasPerfume) {
+                throw new RuntimeException("Coupon is only eligible for orders containing perfumes.");
+            }
+        }
+
         // Calculate discount amount
         BigDecimal discount = BigDecimal.ZERO;
         if (coupon.getDiscountAmount() != null) {
@@ -63,6 +79,26 @@ public class CouponService {
         CouponValidateResponse response = new CouponValidateResponse();
         response.setDiscountAmount(discount);
         return response;
+    }
+
+    private boolean isPerfume(String name) {
+        if (name == null) return false;
+        String nameLower = name.toLowerCase().trim();
+        
+        // List of all known attar names (case-insensitive) from attar.html
+        java.util.Set<String> knownAttars = java.util.Set.of(
+            "dove", "mogra (attarfull)", "kasturi", "white london", "green musk", 
+            "latafa khamrha kawa", "parijat", "darbar", "gold sandel", "ice blue", 
+            "sonchafa", "ambar oud", "shanaya gold", "shanaya", "ponds", "charli black", 
+            "chocolate", "vanilla", "tulsi", "kapoor", "dalchini", "ratrani", 
+            "musk a tahara", "whtie sandel", "mhaisur sandal", "kevd", "kesharchandan", 
+            "musk rose", "black rose", "ice barg", "belpaan", "musk saffi", 
+            "london light", "heena", "lemongrass", "lemon", "oreng", "pineapple", 
+            "cigar", "coffee", "jasmine", "lavender", "open", "green ajmeri", 
+            "555", "white oud", "arabic oud", "blackberry", "kala bhoot"
+        );
+        
+        return !knownAttars.contains(nameLower);
     }
 
     public java.util.List<Coupon> getActiveCoupons() {

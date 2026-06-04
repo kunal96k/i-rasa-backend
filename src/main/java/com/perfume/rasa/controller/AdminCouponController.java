@@ -44,6 +44,7 @@ public class AdminCouponController {
     public ResponseEntity<?> getAllCoupons(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
             Authentication authentication) {
 
         if (!isAdminOrEmployee(authentication)) {
@@ -52,7 +53,12 @@ public class AdminCouponController {
 
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<Coupon> couponsPage = couponRepository.findAll(pageable);
+            Page<Coupon> couponsPage;
+            if (search != null && !search.trim().isEmpty()) {
+                couponsPage = couponRepository.searchCoupons(search.trim(), pageable);
+            } else {
+                couponsPage = couponRepository.findAll(pageable);
+            }
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("content", couponsPage.getContent());
