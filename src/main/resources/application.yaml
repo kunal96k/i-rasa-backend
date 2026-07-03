@@ -27,6 +27,7 @@ spring:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
   error:
     include-message: always
     include-binding-errors: always

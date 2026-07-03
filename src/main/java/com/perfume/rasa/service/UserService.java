@@ -63,20 +63,11 @@ public class UserService implements UserDetailsService {
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
-        user.setEmailVerified(false);
-
-        // Generate verification token
-        String token = UUID.randomUUID().toString();
-        user.setEmailVerificationToken(token);
-        user.setEmailVerificationExpiry(LocalDateTime.now().plusHours(24));
+        user.setEmailVerified(true);
 
         userRepository.save(user);
 
-        // Send verification email
-        String verificationLink = baseUrl + "/api/auth/verify-email?token=" + token;
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationLink);
-
-        log.info("New user registered: {}", user.getEmail());
+        log.info("New user registered and activated: {}", user.getEmail());
         return user;
     }
 

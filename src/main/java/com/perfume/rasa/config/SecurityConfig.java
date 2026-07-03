@@ -92,6 +92,16 @@ package com.perfume.rasa.config;
                         .deleteCookies("JSESSIONID")
                         .permitAll())
                 .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            String uri = request.getRequestURI();
+                            if (uri.startsWith("/api/")) {
+                                response.setContentType("application/json;charset=UTF-8");
+                                response.setStatus(401);
+                                response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized: Please log in.\"}");
+                            } else {
+                                response.sendRedirect("/login");
+                            }
+                        })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             String uri = request.getRequestURI();
                             String accept = request.getHeader("Accept");

@@ -58,7 +58,7 @@ public class AuthController {
             // Clear verification after success
             otpService.clearVerification(request.getEmail());
             return ResponseEntity.ok(new ApiResponse(true,
-                    "Registration successful! Please check your email to verify your account."));
+                    "Registration successful! Your account is now active and verified."));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         } catch (Exception e) {
