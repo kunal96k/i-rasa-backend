@@ -54,6 +54,10 @@ app:
     name: ${ADMIN_NAME:System Admin}
     email: ${ADMIN_EMAIL:irasaperfumes@gmail.com}
 
+  backup:
+    email: ${BACKUP_EMAIL:irasaperfumes@gmail.com}
+    passcode: ${BACKUP_PASSCODE:irasabackup123}
+
 management:
   endpoints:
     web:
