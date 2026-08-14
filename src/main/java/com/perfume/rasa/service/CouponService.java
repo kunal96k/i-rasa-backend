@@ -66,6 +66,51 @@ public class CouponService {
             }
         }
 
+        // Check eligibility for PERFUME79 (requires at least 2x 60ml perfume bottles)
+        if ("PERFUME79".equalsIgnoreCase(coupon.getCode())) {
+            int perfume60mlCount = 0;
+            if (request.getItems() != null) {
+                for (com.perfume.rasa.dto.OrderItemRequestDTO item : request.getItems()) {
+                    if (isPerfume(item.getProductId()) || isPerfume(item.getName())) {
+                        String itemSize = item.getSize() != null ? item.getSize().toLowerCase().trim() : "";
+                        String itemName = item.getName() != null ? item.getName().toLowerCase().trim() : "";
+                        
+                        // Check if it's a 60ml bottle (or default perfume size)
+                        boolean is60ml = itemSize.isEmpty() 
+                                         || itemSize.contains("60ml") 
+                                         || itemSize.contains("60 ml") 
+                                         || itemName.contains("60ml") 
+                                         || itemName.contains("60 ml")
+                                         || !itemSize.contains("100ml");
+                        
+                        if (is60ml) {
+                            int itemQty = item.getQty() != null ? item.getQty() : 1;
+                            perfume60mlCount += itemQty;
+                        }
+                    }
+                }
+            }
+            if (perfume60mlCount < 2) {
+                throw new RuntimeException("PERFUME79 coupon requires purchasing at least 2x 60ml perfume bottles.");
+            }
+        }
+
+        // Check eligibility for ATTAR79 (requires 6ml Attar bottle)
+        if ("ATTAR79".equalsIgnoreCase(coupon.getCode())) {
+            boolean hasAttar = false;
+            if (request.getItems() != null) {
+                for (com.perfume.rasa.dto.OrderItemRequestDTO item : request.getItems()) {
+                    if (!isPerfume(item.getProductId()) && !isPerfume(item.getName())) {
+                        hasAttar = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasAttar) {
+                throw new RuntimeException("ATTAR79 coupon is only eligible for orders containing 6ml Attar.");
+            }
+        }
+
         // Calculate discount amount
         BigDecimal discount = BigDecimal.ZERO;
         if (coupon.getDiscountAmount() != null) {

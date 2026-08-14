@@ -87,9 +87,8 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
-        // ── Ensure coupons are seeded only if the table is empty ──
-        if (couponRepository.count() == 0) {
-            // ── Seed REFILL100 ──
+        // ── Ensure coupons are seeded ──
+        if (couponRepository.findByCode("REFILL100").isEmpty()) {
             Coupon refillCoupon = new Coupon();
             refillCoupon.setCode("REFILL100");
             refillCoupon.setDiscountAmount(BigDecimal.ZERO);
@@ -103,5 +102,40 @@ public class DataInitializer implements CommandLineRunner {
             couponRepository.save(refillCoupon);
             log.info("Refill coupon (REFILL100) successfully initialized.");
         }
+
+        // ── Seed Independence Day 79 Offers (Valid 14 & 15 August 2026) ──
+        if (couponRepository.findByCode("PERFUME79").isEmpty()) {
+            Coupon c1 = new Coupon();
+            c1.setCode("PERFUME79");
+            c1.setDiscountAmount(new BigDecimal("310.00"));
+            c1.setMinCartValue(new BigDecimal("790.00"));
+            c1.setActive(true);
+            c1.setExpiryDate(LocalDateTime.of(2026, 8, 15, 23, 59, 59));
+            c1.setValidity("14 & 15 August 2026");
+            c1.setDiscount("🏷️ Save \u20b9310");
+            c1.setDescription("Independence Day Offer: Perfume Duo Deal (2x 60ml) for \u20b9790 (Save \u20b9310). Applicable on 2x 60ml perfume bottles only.");
+            couponRepository.save(c1);
+            log.info("PERFUME79 coupon initialized.");
+        }
+
+        if (couponRepository.findByCode("ATTAR79").isEmpty()) {
+            Coupon c2 = new Coupon();
+            c2.setCode("ATTAR79");
+            c2.setDiscountAmount(new BigDecimal("20.00"));
+            c2.setMinCartValue(new BigDecimal("79.00"));
+            c2.setActive(true);
+            c2.setExpiryDate(LocalDateTime.of(2026, 8, 15, 23, 59, 59));
+            c2.setValidity("14 & 15 August 2026");
+            c2.setDiscount("\u2b50 Save \u20b920");
+            c2.setDescription("Independence Day Offer: Pure Attar (6ml) for \u20b979 (Save \u20b920). Applicable on 6ml Attar bottle.");
+            couponRepository.save(c2);
+            log.info("ATTAR79 coupon initialized.");
+        }
+
+        // Clean up FRAGRANCE79 if present (not a product on site)
+        couponRepository.findByCode("FRAGRANCE79").ifPresent(c -> {
+            couponRepository.delete(c);
+            log.info("FRAGRANCE79 coupon removed as product is not on site.");
+        });
     }
 }

@@ -108,4 +108,16 @@ public class UserService implements UserDetailsService {
     public void sendOtpEmail(String email, String otp) {
         emailService.sendOtpEmail(email, otp);
     }
+
+    @Transactional
+    public void resetPassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters long.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword.trim()));
+        userRepository.save(user);
+        log.info("Password successfully reset for user: {}", email);
+    }
 }

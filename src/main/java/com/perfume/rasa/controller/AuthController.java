@@ -220,4 +220,55 @@ public class AuthController {
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok(new ApiResponse(true, "Logged out successfully"));
     }
+
+    /** POST /api/auth/forgot-password-otp */
+    @PostMapping("/forgot-password-otp")
+    public ResponseEntity<ApiResponse> forgotPasswordOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Email is required."));
+        }
+
+        if (!userService.existsByEmail(email.trim().toLowerCase())) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "No account found with this email address."));
+        }
+
+        try {
+            String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
+            otpService.storeOtp(email.trim().toLowerCase(), otp);
+            userService.sendOtpEmail(email.trim().toLowerCase(), otp);
+            log.info("Forgot Password OTP sent to: {}", email);
+            return ResponseEntity.ok(new ApiResponse(true, "Password reset OTP sent to " + email));
+        } catch (Exception e) {
+            log.error("Failed to send Forgot Password OTP: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to send reset OTP."));
+        }
+    }
+
+    /** POST /api/auth/reset-password */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse> resetPasswordWithOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        String newPassword = request.get("newPassword");
+
+        if (email == null || otp == null || newPassword == null) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Email, OTP, and new password are required."));
+        }
+
+        if (!otpService.verifyOtp(email.trim().toLowerCase(), otp.trim())) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid or expired OTP."));
+        }
+
+        try {
+            userService.resetPassword(email.trim().toLowerCase(), newPassword);
+            otpService.clearVerification(email.trim().toLowerCase());
+            return ResponseEntity.ok(new ApiResponse(true, "Password reset successfully! You can now log in."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Password reset failed for {}: {}", email, e.getMessage());
+            return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to reset password."));
+        }
+    }
 }
